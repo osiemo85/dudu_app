@@ -1,6 +1,14 @@
 # Agent Instructions
 
-These instructions apply to coding agents and developers working on the Integrated Agricultural Advisory Demo. Read this file first, then read [STRUCTURE.md](STRUCTURE.md) and [SPECS.md](SPECS.md). Consult [DATA_MODEL.md](DATA_MODEL.md) and [KENYA_CONTEXT.md](KENYA_CONTEXT.md) when they are added; do not assume their future contents.
+These instructions apply to coding agents and developers working on the Integrated Agricultural Advisory Demo. This file lives at the repository root. Read it first, then read [the project structure](docs/STRUCTURE.md) and [the functional specifications](docs/SPECS.md) before implementing or changing project behavior. The specifications are the source of truth for both product modules and shared behavior. Consult [the data model](docs/DATA_MODEL.md) and [Kenya context](docs/KENYA_CONTEXT.md) if those files exist; they are planned documents and their absence must not be treated as known content. Also follow [frontend-specific instructions](frontend/AGENTS.md) when changing the Next.js app.
+
+## Required implementation workflow
+
+- Before each implementation task, check `docs/SPECS.md` and the relevant sections of `docs/STRUCTURE.md`; revisit them as needed while implementing. Do not implement only the most visible screen or let one module replace the other.
+- The finished demo must include **both independently usable modules**: disease identification and planting advice. Each must be reachable from the app and have a complete, demoable flow from input through a structured result or an explicit clarification response. Keep module data and advice visibly simulated and appropriately bounded.
+- Connect frontend flows to the FastAPI backend. Implement backend endpoints under `/api/v1/`, with Pydantic request/response models and decision logic in services rather than route handlers. Keep the frontend/backend contract typed and consistent.
+- Use simulated API behavior and editable local data only unless a real integration is explicitly requested and verified. Make setup and demo steps clear enough that a developer can run the frontend and backend and demonstrate both modules.
+- Before considering an implementation complete, confirm that both modules can be demoed with the documented setup and sample data. Do not claim a flow is demoable if its endpoint, UI, or sample input is missing.
 
 ## Product scope
 
@@ -8,6 +16,8 @@ Build a simple, useful demo with two complementary but independently usable modu
 
 1. **Disease identification**: a crop photo and/or symptoms produce possible diagnoses, with relevant local treatment and outbreak context.
 2. **Planting advice**: location, season, crop preference, and available local evidence produce practical guidance about what, when, and how to plant.
+
+These are separate modules: implement and expose both. Users must be able to explore either without first completing the other.
 
 The project is a demo, not a substitute for a qualified agronomist, extension officer, laboratory diagnosis, pesticide label, or official advisory. Make uncertainty and the simulated nature of the data visible.
 
