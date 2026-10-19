@@ -4,6 +4,7 @@ export type ApiStatus = {
 };
 
 const API_BASE_URL = process.env.FASTAPI_URL ?? "http://localhost:8000";
+export const PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
 
 export async function getApiStatus(): Promise<ApiStatus> {
   try {
