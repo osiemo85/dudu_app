@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { AccountNav } from "./AccountNav";
 
 type Module = "crop-health" | "planting";
 
@@ -36,6 +37,8 @@ export function DashboardShell({ module, children }: DashboardShellProps) {
   const pathname = usePathname();
   const details = moduleDetails[module];
   const isAdmin = pathname === details.adminHref;
+  const isPlans = module === "planting" && pathname === "/planting/plans";
+  const isAccount = module === "planting" && pathname.startsWith("/planting/account/");
 
   return (
     <main className="min-h-screen bg-slate-50 text-[var(--foreground)] md:flex">
@@ -50,7 +53,8 @@ export function DashboardShell({ module, children }: DashboardShellProps) {
 
         <nav aria-label={`${details.label} dashboard`} className="flex gap-2 overflow-x-auto border-t border-white/15 px-3 py-3 md:block md:space-y-2 md:border-0 md:px-4 md:py-8">
           <p className="hidden px-3 pb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200 md:block">{details.label}</p>
-          <SidebarLink href={details.dashboardHref} active={!isAdmin} icon={details.icon}>Dashboard</SidebarLink>
+          <SidebarLink href={details.dashboardHref} active={!isAdmin && !isPlans && !isAccount} icon={details.icon}>Dashboard</SidebarLink>
+          {module === "planting" && <SidebarLink href="/planting/plans" active={isPlans} icon="📒">My plans</SidebarLink>}
           <SidebarLink href={details.adminHref} active={isAdmin} icon="▦">{details.adminLabel}</SidebarLink>
         </nav>
 
@@ -64,7 +68,7 @@ export function DashboardShell({ module, children }: DashboardShellProps) {
           </Link>
         </div>
       </aside>
-      <section className="min-w-0 flex-1">{children}</section>
+      <section className="min-w-0 flex-1">{module === "planting" && <AccountNav />}{children}</section>
     </main>
   );
 }

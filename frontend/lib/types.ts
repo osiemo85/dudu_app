@@ -160,10 +160,16 @@ export type CropDetailsResponse = {
   location: DiseaseResponse["location"];
   season: DiseaseResponse["season"];
   plans: Array<{
+    id: number;
     variety: string;
     maturity_days: number | null;
     title: string;
     overall_notes: string | null;
+    rain_needed_months: number | null;
+    rain_requirement_notes: string | null;
+    weeding_count: number | null;
+    fertility_notes: string | null;
+    weather: { period: string; rainy_months: number | null; rainfall_context: string; source: SourceRecord; live_forecast: false } | null;
     source: SourceRecord;
     stages: Array<{
       stage_order: number;
@@ -172,6 +178,13 @@ export type CropDetailsResponse = {
       description: string | null;
       weather_rain_needs: string | null;
       activities: string[];
+      start_day_after_planting: number | null;
+      end_day_after_planting: number | null;
+      timing_notes: string | null;
+      activity_type: string | null;
+      weeding_round: number | null;
+      inputs: Array<{ name: string; category: string; quantity_per_acre: number | null; unit: string; notes: string | null }>;
+      treatments: Array<{ name: string; treatment_type: string; timing_notes: string | null; guidance: string | null; source: SourceRecord }>;
     }>;
   }>;
   suppliers: Array<{
@@ -179,6 +192,8 @@ export type CropDetailsResponse = {
     variety: string;
     contact_phone: string | null;
     contact_email: string | null;
+    description: string | null;
+    listing_season: string | null;
     is_verified: boolean;
     price: number | null;
     unit: string | null;
@@ -187,4 +202,20 @@ export type CropDetailsResponse = {
   }>;
   sources: SourceRecord[];
   disclaimer: string;
+};
+
+export type SavedPlan = {
+  id: number;
+  created_at: string;
+  snapshot: {
+    crop_id: number;
+    crop: string;
+    location: DiseaseResponse["location"];
+    season: DiseaseResponse["season"];
+    plan: CropDetailsResponse["plans"][number];
+    disclaimer: string;
+  };
+};
+export type SavedPlanDetail = SavedPlan & {
+  notes: Array<{ id: number; category: string; body: string; observed_on: string | null; created_at: string }>;
 };

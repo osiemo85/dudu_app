@@ -44,10 +44,11 @@ EDITABLE_TABLES: dict[str, tuple[str, ...]] = {
     "areas": ("county_id", "name", "latitude", "longitude"),
     "varieties": ("crop_id", "name", "maturity_days", "yield_potential", "description"),
     "area_season_varieties": ("area_id", "season_id", "variety_id", "is_recommended", "notes", "source_id"),
-    "management_plans": ("area_season_variety_id", "title", "overall_notes", "source_id"),
-    "management_stages": ("management_plan_id", "stage_order", "stage_name", "duration_days", "description", "weather_rain_needs", "activities"),
+    "management_plans": ("area_season_variety_id", "title", "overall_notes", "source_id", "rain_needed_months", "rain_requirement_notes", "weeding_count", "fertility_notes"),
+    "management_stages": ("management_plan_id", "stage_order", "stage_name", "duration_days", "description", "weather_rain_needs", "activities", "start_day_after_planting", "end_day_after_planting", "timing_notes", "activity_type", "weeding_round"),
     "inputs": ("name", "unit", "category"),
     "stage_inputs": ("management_stage_id", "input_id", "quantity_per_acre", "notes"),
+    "stage_treatments": ("management_stage_id", "treatment_type", "name", "timing_notes", "guidance", "source_id"),
     "suppliers": ("name", "contact_phone", "contact_email", "area_id", "latitude", "longitude", "description", "is_verified"),
     "supplier_varieties": ("supplier_id", "variety_id", "season_id", "price", "unit", "min_order_qty", "notes"),
     "area_season_climate": ("area_id", "season_id", "avg_rainfall_mm", "avg_temp_min", "avg_temp_max", "humidity_pct", "notes", "data_source", "source_id"),
@@ -60,7 +61,7 @@ EDITABLE_TABLES: dict[str, tuple[str, ...]] = {
 
 MODULE_TABLES: dict[str, frozenset[str]] = {
     "crop-health": frozenset({"disease_cases", "sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "agrovets", "outbreaks"}),
-    "planting": frozenset({"sources", "locations", "counties", "areas", "seasons", "crops", "varieties", "area_season_varieties", "management_plans", "management_stages", "inputs", "stage_inputs", "suppliers", "supplier_varieties", "area_season_climate", "planting_calendars", "weather_forecasts", "extension_advice", "indigenous_knowledge", "input_records"}),
+    "planting": frozenset({"sources", "locations", "counties", "areas", "seasons", "crops", "varieties", "area_season_varieties", "management_plans", "management_stages", "inputs", "stage_inputs", "stage_treatments", "suppliers", "supplier_varieties", "area_season_climate", "planting_calendars", "weather_forecasts", "extension_advice", "indigenous_knowledge", "input_records"}),
 }
 
 

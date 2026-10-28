@@ -151,7 +151,7 @@ def agent_area_forecast(county: str, area: str, season: str) -> dict[str, Any] |
 
 def get_crop_plans(crop_id: int, county: str, area: str, season: str) -> list[dict[str, Any]]:
     return _rows("""
-        SELECT mp.id, mp.title, mp.overall_notes, v.name variety, v.maturity_days,
+        SELECT mp.id, mp.title, mp.overall_notes, mp.rain_needed_months, mp.rain_requirement_notes, mp.weeding_count, mp.fertility_notes, v.name variety, v.maturity_days,
                src.name source_name, src.source_date, src.geographic_scope,
                src.evidence_status source_status, src.limitations
         FROM management_plans mp JOIN area_season_varieties av ON av.id=mp.area_season_variety_id
@@ -164,13 +164,31 @@ def get_crop_plans(crop_id: int, county: str, area: str, season: str) -> list[di
 
 
 def get_plan_stages(plan_id: int) -> list[dict[str, Any]]:
-    return _rows("SELECT stage_order,stage_name,duration_days,description,weather_rain_needs,activities FROM management_stages WHERE management_plan_id=? ORDER BY stage_order", (plan_id,))
+    return _rows("""SELECT id, stage_order,stage_name,duration_days,description,weather_rain_needs,activities,
+        start_day_after_planting,end_day_after_planting,timing_notes,activity_type,weeding_round
+        FROM management_stages WHERE management_plan_id=?
+        ORDER BY CASE WHEN start_day_after_planting IS NULL THEN 1 ELSE 0 END, start_day_after_planting, stage_order""", (plan_id,))
+
+
+def get_stage_inputs(stage_id: int) -> list[dict[str, Any]]:
+    # Pesticide products and rates are excluded: this demo has no verified label source.
+    return _rows("""SELECT i.name,i.category,i.unit,si.quantity_per_acre,si.notes
+        FROM stage_inputs si JOIN inputs i ON i.id=si.input_id
+        WHERE si.management_stage_id=? AND lower(i.category) NOT IN ('chemical','pesticide') ORDER BY i.name""", (stage_id,))
+
+
+def get_stage_treatments(stage_id: int) -> list[dict[str, Any]]:
+    return _rows("""SELECT t.name,t.treatment_type,t.timing_notes,t.guidance,
+        s.name source_name,s.source_date,s.geographic_scope,s.evidence_status source_status,s.limitations
+        FROM stage_treatments t JOIN sources s ON s.id=t.source_id
+        WHERE t.management_stage_id=? AND t.treatment_type='non_chemical' ORDER BY t.name""", (stage_id,))
 
 
 def get_crop_suppliers(crop_id: int, county: str, area: str, season: str) -> list[dict[str, Any]]:
     return _rows("""
-        SELECT sp.name, v.name variety, sp.contact_phone, sp.contact_email, sp.is_verified,
-               sv.price, sv.unit, sv.min_order_qty, sv.notes
+        SELECT sp.name, v.name variety, sp.contact_phone, sp.contact_email, sp.description, sp.is_verified,
+               sv.price, sv.unit, sv.min_order_qty, sv.notes,
+               CASE WHEN sv.season_id IS NULL THEN NULL ELSE s.label END listing_season
         FROM supplier_varieties sv JOIN suppliers sp ON sp.id=sv.supplier_id
         JOIN areas a ON a.id=sp.area_id JOIN counties co ON co.id=a.county_id
         JOIN varieties v ON v.id=sv.variety_id

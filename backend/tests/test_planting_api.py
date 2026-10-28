@@ -102,12 +102,54 @@ class PlantingApiTests(unittest.TestCase):
             self.assertTrue(body["plans"])
             self.assertTrue(body["suppliers"])
             self.assertTrue(all(plan["source"]["evidence_status"] == "simulated" for plan in body["plans"]))
-            self.assertTrue(all([stage["stage_name"] for stage in plan["stages"]] == ["Land preparation", "Planting", "Establishment", "Crop management", "Harvest"] for plan in body["plans"]))
+            for plan in body["plans"]:
+                names = {stage["stage_name"] for stage in plan["stages"]}
+                self.assertTrue({"Land preparation", "Planting", "First weeding", "Second weeding", "Fertility review", "Harvest"} <= names)
+                self.assertEqual(plan["weeding_count"], 2)
+                self.assertIsNotNone(plan["rain_needed_months"])
+                self.assertEqual(plan["weather"]["rainy_months"], 4)
+                self.assertFalse(plan["weather"]["live_forecast"])
+                fertilizer = next(stage for stage in plan["stages"] if stage["stage_name"] == "Fertility review")
+                self.assertEqual(fertilizer["start_day_after_planting"], 21)
+                self.assertTrue(any(item["quantity_per_acre"] == 10 and "Fictional" in item["notes"] for item in fertilizer["inputs"]))
             self.assertTrue(all(supplier["price"] is None for supplier in body["suppliers"]))
+            self.assertTrue(all(supplier["contact_phone"] and supplier["contact_email"].endswith("@example.invalid") for supplier in body["suppliers"]))
+            self.assertTrue(all(supplier["description"] and supplier["listing_season"] == "Long rains" for supplier in body["suppliers"]))
         other = self.client.get("/api/v1/planting/crops/1/details", params={**params, "season": "Short rains"}).json()
         self.assertEqual(other["plans"], [])
         self.assertEqual(other["suppliers"], [])
         self.assertEqual(self.client.get("/api/v1/planting/crops/1/details", params={**params, "area": "Njoro"}).status_code, 404)
+
+    def test_demo_supplier_contacts_are_seeded_and_migration_preserves_edits(self):
+        with database() as connection:
+            row = connection.execute("SELECT contact_phone, contact_email FROM suppliers WHERE name='Thika Agrovet'").fetchone()
+            self.assertEqual(tuple(row), ('+254 000 000 001', 'thika@example.invalid'))
+            connection.execute("DELETE FROM schema_migrations WHERE name='demo_supplier_contacts_v1'")
+            connection.execute("UPDATE suppliers SET contact_phone='user-supplied', contact_email=NULL WHERE name='Thika Agrovet'")
+        initialize_database()
+        with database() as connection:
+            row = connection.execute("SELECT contact_phone, contact_email FROM suppliers WHERE name='Thika Agrovet'").fetchone()
+            self.assertEqual(tuple(row), ('user-supplied', 'thika@example.invalid'))
+            connection.execute("UPDATE suppliers SET contact_email=NULL WHERE name='Thika Agrovet'")
+        initialize_database()
+        with database() as connection:
+            self.assertIsNone(connection.execute("SELECT contact_email FROM suppliers WHERE name='Thika Agrovet'").fetchone()[0])
+
+    def test_plan_fields_are_editable_and_chemical_entries_are_not_exposed(self):
+        params = {"county": "Kiambu", "area": "Thika", "season": "Long rains"}
+        plan = self.client.get('/api/v1/planting/crops/2/details', params=params).json()['plans'][0]
+        response = self.client.put(f"/api/v1/admin/planting/management_plans/{plan['id']}", json={"values": {"weeding_count": 3, "rain_needed_months": 2}})
+        self.assertEqual(response.status_code, 200)
+        with database() as connection:
+            stage = connection.execute("SELECT id FROM management_stages WHERE management_plan_id=? AND stage_name='Fertility review'", (plan['id'],)).fetchone()[0]
+            connection.execute("INSERT INTO stage_treatments(management_stage_id,treatment_type,name,timing_notes,guidance) VALUES (?,?,?,?,?)", (stage, 'pesticide', 'Unverified pesticide', 'day 1', 'unverified rate'))
+        updated = next(item for item in self.client.get('/api/v1/planting/crops/2/details', params=params).json()['plans'] if item['id'] == plan['id'])
+        self.assertEqual(updated['weeding_count'], 3)
+        self.assertEqual(updated['rain_needed_months'], 2)
+        self.assertNotIn('Unverified pesticide', json.dumps(updated))
+        initialize_database()
+        preserved = next(item for item in self.client.get('/api/v1/planting/crops/2/details', params=params).json()['plans'] if item['id'] == plan['id'])
+        self.assertEqual(preserved['weeding_count'], 3)
 
     def test_supporting_option_endpoints(self):
         self.assertEqual(self.client.get("/api/v1/planting/locations").status_code, 200)

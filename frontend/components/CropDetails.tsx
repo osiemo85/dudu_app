@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
 import type { CropDetailsResponse } from "@/lib/types";
+import { PlanContent } from "./PlanContent";
+import { SavePlanButton } from "./SavePlanButton";
 
 type Props = { cropId: number; county: string; area: string; season: string };
 
@@ -41,21 +43,33 @@ export function CropDetails({ cropId, county, area, season }: Props) {
         {data.plans.length === 0 && <p className="mt-3">No sourced planting plan is available for this crop, area and season.</p>}
         {data.plans.map((plan, index) => <div key={`${plan.variety}-${index}`} className="mt-4 border-t border-slate-200 pt-4">
           <p className="font-semibold">{plan.variety}{plan.maturity_days ? ` · ${plan.maturity_days} days to maturity` : " · maturity unknown"}</p>
-          {plan.overall_notes && <p className="mt-2">{plan.overall_notes}</p>}
-          {plan.stages.length ? <ol className="mt-3 space-y-3">{plan.stages.map((stage) => <li key={stage.stage_order}>
-            <strong>{stage.stage_order}. {stage.stage_name}</strong>{stage.duration_days && ` · ${stage.duration_days} days`}
-            {stage.description && <p className="mt-1">{stage.description}</p>}
-            {stage.weather_rain_needs && <p className="mt-1 text-slate-500">Weather: {stage.weather_rain_needs}</p>}
-            {stage.activities.length > 0 && <p className="mt-1">Activities: {stage.activities.join("; ")}.</p>}
-          </li>)}</ol> : <p className="mt-2">No stages have been entered for this plan.</p>}
-          <p className="mt-3 text-xs text-slate-500">{plan.source.name} · {plan.source.date} · {plan.source.geographic_scope} · {plan.source.evidence_status}. {plan.source.limitations}</p>
+          <div className="mt-3"><PlanContent plan={plan} /></div>
+          <SavePlanButton cropId={cropId} planId={plan.id} county={county} area={area} season={season} />
         </div>)}
       </div>}
       {!loading && data && view === "suppliers" && <div>
         <h4 className="font-semibold text-slate-950">Agrovets · {data.location.label} · {data.season.label}</h4>
-        <p className="mt-2 text-amber-800">Local demo listings; record dates are unknown. Supplier details, stock and prices are not verified or current.</p>
+        <p className="mt-2 text-amber-800">Local demo listings; record dates are unknown. Supplier details, stock and prices are not verified or current. Seeded phone numbers and email addresses are invalid test placeholders.</p>
         {data.suppliers.length === 0 && <p className="mt-3">No agrovet listings are available for this crop, area and season.</p>}
-        {[...new Set(data.suppliers.map((supplier) => supplier.name))].map((name) => <p key={name} className="mt-3 border-t border-slate-200 pt-3 font-semibold">{name}</p>)}
+        {[...new Set(data.suppliers.map((supplier) => supplier.name))].map((name) => {
+          const listings = data.suppliers.filter((supplier) => supplier.name === name);
+          const supplier = listings[0];
+          return <article key={name} className="mt-4 border-t border-slate-200 pt-4">
+            <h5 className="font-semibold text-slate-950">{name}</h5>
+            <p className="mt-2">Phone: {supplier.contact_phone || "Not provided"}</p>
+            <p className="mt-1">Email: {supplier.contact_email || "Not provided"}</p>
+            {supplier.description && <p className="mt-1">{supplier.description}</p>}
+            <p className="mt-1 text-slate-500">Verification: {supplier.is_verified ? "Marked verified in the local record; not independently checked" : "Not verified"}.</p>
+            <div className="mt-3 space-y-3">{listings.map((listing, index) => <div key={`${listing.variety}-${listing.listing_season ?? "any"}-${index}`} className="rounded-xl bg-white p-3">
+              <p className="font-semibold">Variety: {listing.variety}</p>
+              <p className="mt-1">Season: {listing.listing_season ?? "Not specified"}</p>
+              <p className="mt-1">Price: {listing.price === null ? "Unknown" : `${listing.price}${listing.unit ? ` per ${listing.unit}` : " (unit not specified)"} (currency not recorded)`}</p>
+              <p className="mt-1">Minimum order: {listing.min_order_qty === null ? "Unknown" : `${listing.min_order_qty}${listing.unit ? ` ${listing.unit}` : " (unit not specified)"}`}</p>
+              <p className="mt-1">Stock: Unknown</p>
+              {listing.notes && <p className="mt-1 text-slate-500">{listing.notes}</p>}
+            </div>)}</div>
+          </article>;
+        })}
       </div>}
     </div>}
   </div>;

@@ -187,3 +187,23 @@ sourced management stages. Supplier listings match the same area and season
 records do not establish current business details, prices or stock; missing plans
 or listings are shown explicitly. Seeded stage examples are simulated and do not
 contain pesticide prescriptions or invented fertilizer rates.
+
+## 10. Saved planting plans and observations
+
+Farmers may register or log in to save a selected crop, area, season and variety
+plan as a snapshot with its stages and source. Precise GPS coordinates are not
+saved. A signed-in user may view only their own saved plans and add dated or
+undated notes categorized as land preparation, planting, crop management, disease,
+weather, harvest or other. Notes are farmer observations, not validated diagnosis
+or evidence. Accounts and records are stored locally for this demo; registration
+does not verify the email address. The existing independent disease flow remains
+available without an account.
+
+Planting plans provide editable per-area, season and variety rain needs and
+weeding counts, plus stage-relative timing, weather needs, input quantities per
+acre and sourced non-chemical actions. Show the matched weather scenario and its
+source alongside rain needs, without implying that rainy-month totals establish
+rainfall distribution. Fixture timings and quantities are fictional test values
+and must not be presented as field recommendations. Pesticide product instructions
+and rates are not exposed without a verified, applicable source; the demo currently
+excludes them. Saved snapshots retain the details available when saved.

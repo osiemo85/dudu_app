@@ -122,3 +122,44 @@ requires `county`, `area`, and `season`. It matches plans and listings through
 area, season and variety records; missing matches return empty lists. The seeded
 plans and supplier listings are fictional examples, dated 2025-01-15 for plans;
 contact, price and stock are unverified. They are editable in the planting admin.
+
+The `suppliers` table includes editable `contact_phone` and `contact_email`
+fields. Seeded supplier contacts are deliberately invalid test placeholders
+(the numbers use `000`, and email addresses use `example.invalid`); they are not
+real business contacts. The planting result shows contacts, verification flags and
+matching variety listing details with their limitations.
+
+## Accounts and saved planting plans
+
+On `/planting`, choose a location and season, find crops, open a planting plan
+and select **Save this plan**. Register or log in when prompted. Open **My plans**
+to revisit the saved plan and add categorized notes with an optional observation
+date. Thika, Kiambu, long rains has seeded sample plans. Crop-health remains
+independently available at `/disease`; written tomato symptoms such as “brown
+spots and concentric rings” can use its local fallback without an OpenAI key.
+Planting recommendations require `OPENAI_API_KEY` as described above.
+
+Accounts, salted password hashes, opaque session hashes, plan snapshots and notes
+are stored in the local SQLite database. Precise GPS coordinates are not saved in
+plan snapshots. Sessions use HttpOnly, SameSite cookies and expire after seven
+days; use the same hostname (for example `localhost`) for frontend and backend so
+the browser can send the cookie. This is a local demo: email verification, password
+recovery, rate limiting and production deployment hardening are not implemented.
+The admin demo remains unauthenticated and the database is local, so do not expose
+this setup publicly or use real sensitive information. Restart the backend to
+create the new tables. Model trace export and response storage remain disabled.
+
+### Editing detailed planting plans
+
+In `/planting/admin`, `management_plans` holds area/season/variety rain needs,
+weeding count and fertility notes. Edit each activity and its relative day range
+in `management_stages`; negative days are before planting. Add or change input
+names and units in `inputs` and per-acre quantities in `stage_inputs`. Treatment
+records can be edited in `stage_treatments`; only sourced non-chemical actions
+are displayed, and pesticide instructions are excluded. Review the weeding count
+and stage entries together when editing: they are independent fields. The weather
+comparison comes from the area/season `weather_forecasts` scenario, not live
+weather. Sample timings and seed, compost and fertilizer quantities are
+fictional interface data, not usable application rates. Do not apply them.
+Saved plans are snapshots; save a plan again to capture changed source data or
+weather. Existing saved snapshots and notes remain unchanged.

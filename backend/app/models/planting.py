@@ -93,6 +93,30 @@ class CropOption(BaseModel):
     summary: str
 
 
+class PlanInput(BaseModel):
+    name: str
+    category: str
+    quantity_per_acre: float | None
+    unit: str
+    notes: str | None
+
+
+class PlanTreatment(BaseModel):
+    name: str
+    treatment_type: str
+    timing_notes: str | None
+    guidance: str | None
+    source: SourceRecord
+
+
+class PlanWeather(BaseModel):
+    period: str
+    rainy_months: int | None
+    rainfall_context: str
+    source: SourceRecord
+    live_forecast: bool = False
+
+
 class ManagementStage(BaseModel):
     stage_order: int
     stage_name: str
@@ -100,13 +124,26 @@ class ManagementStage(BaseModel):
     description: str | None
     weather_rain_needs: str | None
     activities: list[str]
+    start_day_after_planting: int | None = None
+    end_day_after_planting: int | None = None
+    timing_notes: str | None = None
+    activity_type: str | None = None
+    weeding_round: int | None = None
+    inputs: list[PlanInput] = Field(default_factory=list)
+    treatments: list[PlanTreatment] = Field(default_factory=list)
 
 
 class CropPlan(BaseModel):
+    id: int
     variety: str
     maturity_days: int | None
     title: str
     overall_notes: str | None
+    rain_needed_months: int | None = None
+    rain_requirement_notes: str | None = None
+    weeding_count: int | None = None
+    fertility_notes: str | None = None
+    weather: PlanWeather | None = None
     stages: list[ManagementStage]
     source: SourceRecord
 
@@ -116,6 +153,8 @@ class CropSupplier(BaseModel):
     variety: str
     contact_phone: str | None
     contact_email: str | None
+    description: str | None
+    listing_season: str | None
     is_verified: bool
     price: float | None
     unit: str | None

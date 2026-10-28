@@ -83,8 +83,8 @@ SELECT id,2,'Planting',NULL,'Confirm locally appropriate seed and planting timin
 INSERT OR IGNORE INTO inputs(name,unit,category) VALUES ('Demo seed','kg','Seed'),('Demo compost','kg','Organic matter');
 INSERT OR IGNORE INTO stage_inputs(management_stage_id,input_id,quantity_per_acre,notes)
 SELECT ms.id,i.id,NULL,'Quantity intentionally unspecified; obtain locally reviewed guidance.' FROM management_stages ms JOIN inputs i ON i.name='Demo seed' WHERE ms.stage_name='Planting';
-INSERT OR IGNORE INTO suppliers(name,area_id,description,is_verified)
-VALUES ('Thika Agrovet', (SELECT a.id FROM areas a JOIN counties c ON c.id=a.county_id WHERE c.name='Kiambu' AND a.name='Thika'), 'Simulated supplier; no verified stock or contact.',0);
+INSERT OR IGNORE INTO suppliers(name,contact_phone,contact_email,area_id,description,is_verified)
+VALUES ('Thika Agrovet','+254 000 000 001','thika@example.invalid', (SELECT a.id FROM areas a JOIN counties c ON c.id=a.county_id WHERE c.name='Kiambu' AND a.name='Thika'), 'Simulated supplier; no verified stock or contact.',0);
 INSERT OR IGNORE INTO supplier_varieties(supplier_id,variety_id,season_id,price,unit,min_order_qty,notes)
 SELECT sp.id,v.id,s.id,NULL,'kg',NULL,'Test listing only; price and stock unknown.' FROM suppliers sp JOIN varieties v ON v.name='Demo maize A' JOIN seasons s ON s.county='Kiambu' AND s.label='Long rains' WHERE sp.name='Thika Agrovet';
 INSERT OR IGNORE INTO area_season_climate(area_id,season_id,avg_rainfall_mm,avg_temp_min,avg_temp_max,humidity_pct,notes,data_source,source_id)
@@ -155,8 +155,11 @@ SELECT id,5,'Harvest','Check maturity and plan safe handling and storage.', 'Con
 FROM management_plans WHERE (title LIKE 'Demo plan: %' AND overall_notes='Fictional plan for interface testing, dated 2025-01-15. Confirm each step with a local extension officer.') OR (title='Demo management plan' AND overall_notes='Fictional steps for testing; consult local extension advice.');
 
 -- Fictional listings do not establish actual suppliers, prices, or stock.
-INSERT OR IGNORE INTO suppliers(name,area_id,description,is_verified)
-SELECT a.name || ' Agrovet',a.id,'Simulated supplier; no verified stock or contact.',0 FROM areas a;
+INSERT OR IGNORE INTO suppliers(name,contact_phone,contact_email,area_id,description,is_verified)
+SELECT a.name || ' Agrovet',
+ CASE a.name WHEN 'Thika' THEN '+254 000 000 001' WHEN 'Njoro' THEN '+254 000 000 002' WHEN 'Kerugoya' THEN '+254 000 000 003' WHEN 'Kangundo' THEN '+254 000 000 004' END,
+ CASE WHEN a.name IN ('Thika','Njoro','Kerugoya','Kangundo') THEN lower(a.name) || '@example.invalid' END,
+ a.id,'Simulated supplier; no verified stock or contact.',0 FROM areas a;
 INSERT OR IGNORE INTO supplier_varieties(supplier_id,variety_id,season_id,price,unit,min_order_qty,notes)
 SELECT sp.id,av.variety_id,av.season_id,NULL,'kg',NULL,'Fictional test listing; price and stock unknown.'
 FROM area_season_varieties av JOIN areas a ON a.id=av.area_id

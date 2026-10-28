@@ -70,23 +70,24 @@ admin edits across restarts. Consented review photos are stored locally under
 
 ## Demonstrate planting advice
 
-1. Open **Plan a crop**.
-2. Select `Machakos / Kangundo`, `Short rains`, no irrigation, good drainage,
-   and a low risk preference. Leave crop preference open.
-3. Submit to compare locally matched crop options. The result shows how the
-   simulated dry scenario favors lower-water options, alongside planting windows,
-   practical steps, risk checks, extension-style notes, input limitations,
-   evidence gaps, review triggers, sources, and confidence.
-4. Select `Kiambu / Thika`, `Long rains`, and `Potato` with poor drainage to see
-   a constraint downgrade the option.
-5. Omit location or season, or choose a crop without a matching local calendar,
-   to see a focused clarification instead of fabricated advice.
+1. Configure `OPENAI_API_KEY` in `backend/.env` and restart FastAPI.
+2. Open **Plan a crop**, choose `Kiambu / Thika` and `Long rains`, and select
+   **Find crops**. The agent compares crop rain requirements with a simulated
+   local weather scenario and returns up to two crop options.
+3. Open **Planting plan** for an option, then choose **Save this plan**. Register
+   or log in when prompted. Choose **My plans** to return to the saved plan and
+   add planting, disease, weather, harvest or other notes; an observation date is
+   optional. The saved plan preserves its stages and source as a snapshot.
+4. Open **Find agrovets** to see simulated supplier names. The listings do not
+   confirm actual businesses, contacts, prices or stock. Omit a location or
+   season to see a clarification instead of a recommendation.
 
-Planting decisions use only editable local demo tables. Weather records are
-scenarios, not forecasts; input records do not verify certification or stock;
-local-knowledge placeholders await community review and permission. Soil tests,
-farm budgets, live prices, buyers, labour, and field observations are explicitly
-identified as gaps rather than inferred.
+Weather, crop requirements, plans and suppliers are editable test data, not live
+forecasts or validated advice. Accounts, plans and notes are stored locally in
+SQLite. This demo has no email verification or password recovery, and its admin
+is unauthenticated; do not expose it publicly or enter sensitive information.
+Use the same hostname (such as `localhost`) for frontend and backend so the
+browser can send the session cookie. See `backend/README.md` for details.
 
 ## Checks
 

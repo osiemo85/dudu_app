@@ -5,7 +5,7 @@ import { PUBLIC_API_BASE_URL } from "@/lib/api";
 
 const tablesByModule = {
   "crop-health": ["disease_cases","sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "agrovets", "outbreaks"],
-  planting: ["sources", "locations", "counties", "areas", "seasons", "crops", "varieties", "area_season_varieties", "management_plans", "management_stages", "inputs", "stage_inputs", "suppliers", "supplier_varieties", "area_season_climate", "planting_calendars", "weather_forecasts", "extension_advice", "indigenous_knowledge", "input_records"],
+  planting: ["sources", "locations", "counties", "areas", "seasons", "crops", "varieties", "area_season_varieties", "management_plans", "management_stages", "inputs", "stage_inputs", "stage_treatments", "suppliers", "supplier_varieties", "area_season_climate", "planting_calendars", "weather_forecasts", "extension_advice", "indigenous_knowledge", "input_records"],
 } as const;
 type AdminModule = keyof typeof tablesByModule;
 type TableName = (typeof tablesByModule)[AdminModule][number];
@@ -24,10 +24,11 @@ const tableDescriptions: Record<TableName, string> = {
   areas: "Areas linked to counties; coordinates are manually supplied test points.",
   varieties: "Demo varieties linked to crop species, including sample maturity durations.",
   area_season_varieties: "Simulated area and season suitability for varieties; not validated advice.",
-  management_plans: "Illustrative management plans for an area, season and variety.",
-  management_stages: "Steps and weather needs within a simulated management plan.",
+  management_plans: "Plans for each area, season and variety. Edit rain needs and the weeding count here; edit individual timing and inputs in the stage tables.",
+  management_stages: "Edit each stage, its days relative to planting, weeding round, weather needs and activities.",
   inputs: "Master list of illustrative farming inputs.",
-  stage_inputs: "Illustrative inputs linked to management stages; quantities are not validated recommendations.",
+  stage_inputs: "Edit inputs and quantities per acre for each stage. Sample numbers are fictional and not validated recommendations.",
+  stage_treatments: "Stage-linked treatment records; unverified pesticide instructions are not shown to farmers.",
   suppliers: "Fictional demo suppliers. These records do not verify business details or inventory.",
   supplier_varieties: "Demo supplier and variety links. Prices and availability are not current or verified.",
   area_season_climate: "Simulated seasonal climate expectations for an area, not a live forecast.",

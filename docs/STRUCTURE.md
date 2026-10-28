@@ -115,3 +115,13 @@ This document describes the intended demo layout. Some directories may not exist
 `backend/app/services/planting_details.py` assembles area/season/crop plans and
 supplier listings from local records for `/api/v1/planting/crops/{id}/details`;
 `frontend/components/CropDetails.tsx` displays them from planting result cards.
+
+`data/user_plans.sql` defines local accounts, sessions, saved snapshots and notes.
+`backend/app/services/accounts.py` and `user_plans.py` implement authentication,
+ownership and persistence; `backend/app/api/v1/user_plans.py` exposes their typed
+API. `frontend/app/planting/plans/page.tsx` provides the farmer's saved plans.
+
+`data/management_enrichment.sql` supplies one-time fictional structured plan
+fixtures. `management_plans`, `management_stages`, `stage_inputs`, `inputs` and
+`stage_treatments` are editable in the planting admin; `PlanContent.tsx` renders
+both the plan preview and the saved snapshot.
