@@ -60,7 +60,7 @@ For a missing field, return an explicit unknown state or ask for clarification; 
 
 ### Inputs and acceptance criteria
 
-Inputs: crop (optional if detectable but confirmable), photo and/or symptoms, growth stage (optional), location, season/context, and clarifications.
+Inputs: required user-confirmed crop, photo and/or symptoms, growth stage (optional), location, season/context, and clarifications. For photo-only submissions, the model must report visible symptoms before local database lookup. Results must distinguish a match in the limited local demo data from symptoms that did not match those records.
 
 Accept when:
 
@@ -131,3 +131,59 @@ Potential information custodians to investigate include relevant Kenyan agricult
 - Live outbreak surveillance, weather forecasting, supplier inventory, or certification checks without a verified integration.
 - A single planting calendar for all of Kenya.
 - Automatic collection or long-term storage of precise farmer location.
+
+## 8. Opt-in OpenAI analysis and local case history
+
+The explicitly requested live integration is OpenAI Agents SDK analysis via Responses,
+enabled only by a server-side `OPENAI_API_KEY`. Agricultural evidence remains local and
+simulated; no live weather, government, outbreak or supplier integration is implied.
+The identification agent retrieves evidence through read-only tools and returns typed
+possible matches. A separate officer-report agent prepares a review brief when the
+farmer opts in. Roles have stable IDs and versions; executions have unique run IDs,
+model names, timestamps and status. A unique workflow ID ties them to one submission.
+
+The application validates final matches before writing history. With explicit expert
+review consent it stores the original observations, optional photo/coordinates, resolved
+context, findings, confidence, evidence provenance, disclaimer and agent audit metadata.
+No-match, clarification and provider-failure cases must remain distinguishable. Only
+completed AI matches create linked pending outbreak observations; these cannot imply
+confirmed or current outbreaks. A reporting or save failure must not erase a completed
+identification. Reviewers can inspect full case evidence and record their decision/notes.
+Farmer submissions without consent must not be retained locally. Trace export is disabled;
+coordinates are not sent to the models, and raw exchanges are not logged.
+
+The disease workflow uses three separate roles. The photo-symptom agent returns a
+one- or two-line description and visible symptoms. The database-search agent compares
+those observations with any farmer-entered symptoms, chooses only exact supplied
+observations, and uses those to search local records. The final-judge agent receives the
+photo analysis and retrieved database evidence and selects only returned candidate IDs.
+Each role has its own ID and run record. When no photo is supplied, the photo role is
+skipped; written observations proceed to search and final review.
+
+Pending AI outbreak reviews keep only the information needed for expert assessment on
+the outbreak row: the analysis timestamp, local image path, image-agent description,
+any farmer-entered symptoms, and the approval decision/comment. The detailed legacy
+evidence JSON is not created for new reviews. An expert must provide a comment when
+approving or rejecting an AI analysis.
+
+## 9. Planting agent and test forecast
+
+The planting form collects a county and area (or consented browser location) and
+an explicitly selected local season with its month range. A planting agent uses
+two read-only local tools: it finds candidate crops for the resolved area and
+season, then checks each candidate's crop rain-duration requirement against the
+area's seasonal forecast scenario. It returns at most two ranked options and
+explains the comparison. The application validates tool use and candidate IDs;
+missing evidence, configuration or agent failures produce clarification instead
+of an invented ranking. Coordinates are not sent to the model or retained.
+The editable crop rain requirements and `weather_forecasts` records are fictional,
+dated test data; they do not provide current weather, verified crop requirements,
+or the distribution of rainfall within the season. They require local review.
+
+Planting results offer a plan and supplier listings for each returned crop. Plan
+lookup matches the resolved area, season, and crop variety and shows ordered,
+sourced management stages. Supplier listings match the same area and season
+(or a season-unspecified listing) and a locally listed variety. Demo supplier
+records do not establish current business details, prices or stock; missing plans
+or listings are shown explicitly. Seeded stage examples are simulated and do not
+contain pesticide prescriptions or invented fertilizer rates.

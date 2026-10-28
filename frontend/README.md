@@ -1,22 +1,19 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is the Next.js frontend for Shamba Guide. It exposes independent disease
+identification and planting-advice flows backed by the local FastAPI service.
 
 ## Getting Started
 
-First, run the development server:
+Start the FastAPI service first, then run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The default API origin is `http://localhost:8000`. Override both `FASTAPI_URL`
+and `NEXT_PUBLIC_FASTAPI_URL` when the backend is hosted elsewhere.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

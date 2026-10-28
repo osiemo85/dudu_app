@@ -1,9 +1,17 @@
 from app.data_access import disease_repository as repository
 from app.models.common import LocationContext, SeasonContext
-from app.models.disease import DiseaseRequest
+from typing import Protocol
 
 
-def resolve_context(request: DiseaseRequest) -> tuple[LocationContext, SeasonContext, dict | None, dict | None]:
+class ContextRequest(Protocol):
+    latitude: float | None
+    longitude: float | None
+    county: str | None
+    area: str | None
+    season: str | None
+
+
+def resolve_context(request: ContextRequest) -> tuple[LocationContext, SeasonContext, dict | None, dict | None]:
     location_record = None
     source = "unknown"
     correction_note = None

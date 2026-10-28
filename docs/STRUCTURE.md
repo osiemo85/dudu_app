@@ -85,3 +85,33 @@ This document describes the intended demo layout. Some directories may not exist
 - Use stable IDs for data records. Include `source`, `source_date` or period, `geographic_scope`, and `evidence_status` where relevant.
 - Avoid encoding changing business rules in UI text or route handlers; place them in services and editable data.
 - Keep actual user location separate from manually entered coordinates for test/demo records.
+
+## Implemented disease agent workflow
+
+- `backend/app/services/disease_agent.py`: a photo-symptom agent, local evidence search
+  agent, and final-judge agent. The photo agent returns a short description and visible
+  symptoms; the search agent can query only exact farmer or photo observations; the judge
+  reviews image analysis and retrieved records before selecting possible matches. Each
+  role has a structured output and distinct local run metadata. An optional officer
+  report agent runs only with farmer consent.
+- `backend/app/services/disease_engine.py`: resolved context, validated advisory assembly,
+  visible fallback behavior, then consent-gated persistence.
+- `backend/app/services/outbreak_recorder.py`: consent-gated photo lifecycle and compact
+  outbreak review records: analysis timestamp, image description, farmer symptoms,
+  local image path, and an expert decision/comment.
+- `backend/app/data_access/disease_repository.py`: atomic case and pending observation writes.
+- `data/seed.sql`: additive `disease_cases` schema; existing SQLite records remain intact.
+- Crop-health admin `disease_cases`: full evidence, photos, agent identities/runs and review
+  fields. Other modules remain independently reachable and usable.
+
+## Planting agent workflow
+
+- `backend/app/services/planting_agent.py` runs the planting agent and validates
+  its two read-only crop and forecast tool calls before presenting results.
+- `data/planting_tables.sql` contains editable simulated area candidates and
+  seasonal forecast fixtures. Startup migrates the old `weather_samples` table
+  to `weather_forecasts` and extends `crops` with rain-duration requirements.
+
+`backend/app/services/planting_details.py` assembles area/season/crop plans and
+supplier listings from local records for `/api/v1/planting/crops/{id}/details`;
+`frontend/components/CropDetails.tsx` displays them from planting result cards.

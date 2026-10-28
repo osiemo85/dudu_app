@@ -1,8 +1,18 @@
+import logging
+from pathlib import Path
+import traceback
+from uuid import uuid4
+
+from openai import APIConnectionError, APIStatusError, APITimeoutError, AuthenticationError, RateLimitError
+
 from app.core.disclaimers import DISEASE_DISCLAIMER
 from app.data_access import disease_repository as repository
 from app.models.common import Confidence, SourceRecord
 from app.models.disease import (
     Clarification,
+    AnalysisStatus,
+    AgentRun,
+    RecordingStatus,
     DiseaseCandidate,
     DiseaseRequest,
     DiseaseResponse,
@@ -11,7 +21,42 @@ from app.models.disease import (
     TreatmentOption,
 )
 from app.services.context import resolve_context
-from app.services.disease_agent import AgentResult, run_agent
+from app.services.disease_agent import AgentEvidenceError, AgentResult, run_agent
+from app.services.outbreak_recorder import record_identification
+
+
+logger = logging.getLogger(__name__)
+
+
+def _analysis_error_code(exc: Exception) -> str:
+    if isinstance(exc, AgentEvidenceError):
+        return exc.code
+    if isinstance(exc, AuthenticationError):
+        return "provider_authentication_failed"
+    if isinstance(exc, RateLimitError):
+        return "provider_rate_limited"
+    if isinstance(exc, APITimeoutError):
+        return "provider_timeout"
+    if isinstance(exc, APIConnectionError):
+        return "provider_connection_failed"
+    if isinstance(exc, APIStatusError):
+        return f"provider_http_{getattr(exc, 'status_code', 'error')}"
+    return f"unexpected_{type(exc).__name__.lower()}"
+
+
+def _analysis_failure(exc: Exception) -> str:
+    # Never expose provider exception text: authentication errors can contain keys.
+    if isinstance(exc, AgentEvidenceError):
+        return f"The AI result could not be validated against the local demo evidence ({exc.code}). Please retry analysis or provide written symptoms."
+    if isinstance(exc, AuthenticationError):
+        return "The AI provider rejected the configured API key. The server administrator must update the key and restart the backend."
+    if isinstance(exc, RateLimitError):
+        return "The AI provider reported a quota or rate limit. Check the provider account or try again later."
+    if isinstance(exc, (APITimeoutError, APIConnectionError)):
+        return "The AI provider could not be reached. Please try again later."
+    if isinstance(exc, APIStatusError):
+        return "The AI provider rejected the analysis request. The server administrator should check model access and configuration."
+    return "AI analysis could not be completed. Please retry or provide written symptoms."
 
 
 def _source(row: dict) -> SourceRecord:
@@ -45,7 +90,7 @@ def _clarification_response(request: DiseaseRequest, field: str, question: str, 
     )
 
 
-def identify_disease(request: DiseaseRequest, image: bytes | None, image_content_type: str | None) -> DiseaseResponse:
+def _identify_disease(request: DiseaseRequest, image: bytes | None, image_content_type: str | None) -> DiseaseResponse:
     location, season, _, season_record = resolve_context(request)
     if location.county is None:
         return _clarification_response(request, "location", "Which county and area is the crop in?", "Location is needed to select relevant local records and avoid misleading outbreak context.")
@@ -57,18 +102,67 @@ def identify_disease(request: DiseaseRequest, image: bytes | None, image_content
     symptoms = request.symptoms or "Image supplied without written symptoms"
     deterministic = repository.search_disease_candidates(request.crop, symptoms, request.affected_part)
     agent_result: AgentResult | None = None
+    failed_runs: list[AgentRun] = []
+    matched_written_symptoms = bool(request.symptoms and any(row["score"] > 0 for row in deterministic))
+    analysis = AnalysisStatus(
+        status="unavailable",
+        local_database_match=("matched" if matched_written_symptoms else "not_matched") if request.symptoms else "not_checked",
+        message="No AI provider is configured. Photo analysis requires a server-side API key.",
+    )
     try:
         resolved_request = request.model_copy(update={"county": location.county, "area": location.area})
         agent_result = run_agent(resolved_request, image, image_content_type)
-    except Exception:
-        agent_result = None
+    except Exception as exc:
+        failed_runs = getattr(exc, "agent_runs", [])
+        if not failed_runs and isinstance(getattr(exc, "agent_run", None), AgentRun):
+            failed_runs.append(exc.agent_run)
+        analysis.message = _analysis_failure(exc)
+        analysis.error_code = _analysis_error_code(exc)
+        frames = traceback.extract_tb(exc.__traceback__, limit=-1)
+        origin = f"{Path(frames[-1].filename).name}:{frames[-1].lineno}" if frames else "unknown"
+        logger.warning(
+            "Disease AI analysis failed: error_type=%s error_code=%s http_status=%s origin=%s",
+            type(exc).__name__, analysis.error_code,
+            getattr(exc, "status_code", None), origin,
+        )
 
-    selected_ids = agent_result.selected_disease_ids if agent_result and agent_result.selected_disease_ids else [row["id"] for row in deterministic]
-    selected = repository.get_disease_candidates(selected_ids, symptoms, request.affected_part)
-    if request.crop:
-        selected = [row for row in selected if row["crop"].lower() == request.crop.lower()]
+    if agent_result:
+        analysis = AnalysisStatus(
+            status="completed", image_analyzed=bool(image), image_observations=agent_result.image_observations,
+            photo_description=agent_result.photo_description,
+            search_observations=agent_result.selected_search_observations,
+            local_database_match=agent_result.local_database_match,
+            message="AI analysis completed using the supplied photo and/or written observations. Local supporting records remain simulated.",
+        )
+    elif image and not (request.symptoms or "").strip():
+        result = _clarification_response(request, "symptoms", "Please describe the visible symptoms, or retry photo analysis once the AI service is available.", "The photo was not analyzed, so there is no observation to match against the demo records.")
+        result.analysis = analysis
+        result.engine = "deterministic_demo"
+        result.agent_runs = failed_runs
+        return result
+
+    selected_ids = agent_result.selected_disease_ids if agent_result else [row["id"] for row in deterministic if row["score"] > 0]
+    result_symptoms = " ".join(agent_result.selected_search_observations) if agent_result else symptoms
+    selected = repository.get_disease_candidates(selected_ids, result_symptoms, request.affected_part)
+    selected = [row for row in selected if row["crop"].lower() == request.crop.lower()]
     if not selected:
-        selected = deterministic[:3]
+        if agent_result and agent_result.local_database_match == "not_checked":
+            question = "Could you describe the symptoms or add a clearer photo?"
+            reason = "No clear symptoms could be identified in the photo, so local database records were not searched."
+        else:
+            question = "No possible cause was sufficiently supported by the local demo search."
+            reason = "The observed symptoms did not support a possible cause in the local demo records. The database is limited, so this does not rule out a disease that is absent from it."
+        result = _clarification_response(request, "symptoms_or_image", question, reason)
+        result.analysis = analysis
+        if agent_result:
+            result.analysis.local_database_match = agent_result.local_database_match
+        result.engine = agent_result.engine if agent_result else "deterministic_demo"
+        result.next_actions = agent_result.next_actions if agent_result else []
+        result.agent_runs = agent_result.agent_runs if agent_result else failed_runs
+        result.officer_report = agent_result.officer_report if agent_result else None
+        if agent_result:
+            result.confidence = Confidence(level=agent_result.confidence_level, explanation=agent_result.confidence_explanation)
+        return result
     selected_ids = [row["id"] for row in selected]
 
     candidates = []
@@ -121,8 +215,21 @@ def identify_disease(request: DiseaseRequest, image: bytes | None, image_content
         engine = "deterministic_demo"
 
     return DiseaseResponse(
-        status="possible_matches", crop=request.crop or "Unconfirmed crop", growth_stage=request.growth_stage,
+        status="possible_matches", crop=request.crop, growth_stage=request.growth_stage,
         location=location, season=season, candidates=candidates, outbreak_context=outbreaks,
         treatment_options=treatments, next_actions=next_actions, clarification=None, sources=sources,
-        disclaimer=DISEASE_DISCLAIMER, confidence=confidence, engine=engine,
+        disclaimer=DISEASE_DISCLAIMER, confidence=confidence, engine=engine, analysis=analysis,
+        agent_runs=agent_result.agent_runs if agent_result else failed_runs,
+        officer_report=agent_result.officer_report if agent_result else None,
     )
+
+
+def identify_disease(request: DiseaseRequest, image: bytes | None, image_content_type: str | None) -> DiseaseResponse:
+    result = _identify_disease(request, image, image_content_type)
+    result.workflow_id = uuid4().hex
+    try:
+        result.recording = record_identification(request, result, image, image_content_type)
+    except Exception as exc:
+        logger.warning("Disease history save failed: error_type=%s", type(exc).__name__)
+        result.recording = RecordingStatus(status="failed", message="The result could not be saved for officer review. Please retry; this result remains available here.")
+    return result

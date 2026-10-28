@@ -10,7 +10,7 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-2 text-sm font-semibold">
           <Link href="/disease" className="rounded-full px-3 py-2 text-emerald-900 hover:bg-emerald-50">Crop health</Link>
-          <Link href="/admin" className="rounded-full px-3 py-2 text-slate-600 hover:bg-slate-100">Admin</Link>
+          <Link href="/planting" className="rounded-full px-3 py-2 text-emerald-900 hover:bg-emerald-50">Planting</Link>
           <span className="hidden rounded-full bg-amber-100 px-3 py-1.5 text-xs text-amber-900 sm:inline">SIMULATED DATA</span>
         </nav>
       </div>

@@ -73,6 +73,8 @@ def search_disease_candidates(crop: str | None, symptoms: str, affected_part: st
     tokens = set(re.findall(r"[a-z]+", symptoms.lower()))
     if affected_part:
         tokens.update(re.findall(r"[a-z]+", affected_part.lower()))
+    if not tokens:
+        return []
     for disease in diseases:
         signals = _rows("SELECT plant_part, symptom, weight FROM disease_symptoms WHERE disease_id = ?", (disease["id"],))
         matches = []
@@ -88,7 +90,7 @@ def search_disease_candidates(crop: str | None, symptoms: str, affected_part: st
         disease["matches"] = matches
     ranked = sorted(diseases, key=lambda item: item["score"], reverse=True)
     positive = [item for item in ranked if item["score"] > 0]
-    return (positive or ranked[:1])[:limit]
+    return positive[:limit]
 
 
 def get_disease_candidates(disease_ids: list[int], symptoms: str, affected_part: str | None) -> list[dict[str, Any]]:
@@ -136,6 +138,7 @@ def get_outbreak_context(county: str, disease_ids: list[int]) -> list[dict[str, 
         JOIN diseases ON diseases.id = outbreaks.disease_id
         JOIN sources ON sources.id = outbreaks.source_id
         WHERE lower(outbreaks.county) = lower(?) AND outbreaks.disease_id IN ({placeholders})
+          AND (outbreaks.llm_identified = 0 OR outbreaks.expert_approval = 'approved')
         ORDER BY outbreaks.observed_period DESC
         """,
         (county, *disease_ids),
@@ -162,8 +165,65 @@ def get_treatments(county: str, crop: str | None, disease_ids: list[int]) -> lis
     )
 
 
+def get_nearby_agrovets(county: str, area: str, disease_ids: list[int]) -> list[dict[str, Any]]:
+    """Return simulated directory records matching the user's selected area and possible diseases."""
+    if not disease_ids:
+        return []
+    placeholders = ",".join("?" for _ in disease_ids)
+    return _rows(
+        f"""
+        SELECT agrovets.*, diseases.common_name AS disease_name,
+               sources.name AS source_name, sources.source_date,
+               sources.geographic_scope, sources.evidence_status AS source_status,
+               sources.limitations
+        FROM agrovets
+        JOIN diseases ON diseases.id = agrovets.disease_id
+        JOIN sources ON sources.id = agrovets.source_id
+        WHERE lower(agrovets.county) = lower(?)
+          AND lower(agrovets.area) = lower(?)
+          AND agrovets.disease_id IN ({placeholders})
+        ORDER BY agrovets.name, agrovets.treatment_name
+        """,
+        (county, area, *disease_ids),
+    )
+
+
 def get_sources(source_ids: list[int]) -> list[dict[str, Any]]:
     if not source_ids:
         return []
     placeholders = ",".join("?" for _ in source_ids)
     return _rows(f"SELECT * FROM sources WHERE id IN ({placeholders}) ORDER BY id", tuple(source_ids))
+
+
+def save_disease_case(values: dict[str, Any], outbreak: dict[str, Any] | None) -> int:
+    """Commit one immutable case snapshot and optional pending observation atomically."""
+    with database() as connection:
+        existing = connection.execute("SELECT id FROM disease_cases WHERE workflow_id = ?", (values["workflow_id"],)).fetchone()
+        if existing:
+            return int(existing["id"])
+        outbreak_id = None
+        if outbreak:
+            connection.execute(
+                """INSERT OR IGNORE INTO sources
+                (name, source_date, geographic_scope, evidence_status, limitations)
+                VALUES (?, 'ongoing', 'User-supplied location', 'awaiting_validation', ?)""",
+                ("Farmer-submitted LLM observation", "Unverified observation saved for expert review; it is not an outbreak confirmation."),
+            )
+            source = connection.execute(
+                "SELECT id FROM sources WHERE name = ? AND source_date = 'ongoing' AND geographic_scope = 'User-supplied location'",
+                ("Farmer-submitted LLM observation",),
+            ).fetchone()
+            outbreak["source_id"] = source["id"]
+            columns = list(outbreak)
+            cursor = connection.execute(
+                f"INSERT INTO outbreaks ({', '.join(columns)}) VALUES ({', '.join('?' for _ in columns)})",
+                tuple(outbreak[column] for column in columns),
+            )
+            outbreak_id = cursor.lastrowid
+        values = {**values, "outbreak_id": outbreak_id}
+        columns = list(values)
+        cursor = connection.execute(
+            f"INSERT INTO disease_cases ({', '.join(columns)}) VALUES ({', '.join('?' for _ in columns)})",
+            tuple(values[column] for column in columns),
+        )
+        return int(cursor.lastrowid)
