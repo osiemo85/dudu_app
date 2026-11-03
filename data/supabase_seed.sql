@@ -249,6 +249,11 @@ INSERT INTO outbreaks (disease_id, county, area, observed_period, report_summary
   (4, 'Nakuru', 'Njoro', 'May 2024', 'Simulated historical leaf blight observations used to demonstrate area matching.', 2),
   (5, 'Kirinyaga', 'Kerugoya', 'November 2024', 'Simulated historical angular leaf spot-like observations used to demonstrate area matching.', 2) ON CONFLICT DO NOTHING
 ;
+INSERT INTO sources (name, source_date, geographic_scope, evidence_status, limitations)
+VALUES ('Shamba Guide demo planting calendar', '2025-01-15', 'Selected demonstration counties', 'simulated',
+'Illustrative planning windows only; verify rainfall onset, soil condition, and current county advice before planting.')
+ON CONFLICT(name, source_date, geographic_scope) DO NOTHING
+;
 INSERT INTO crops (name, summary, water_requirement, typical_maturity_days, risk_notes, source_id) VALUES
   ('Maize', 'A staple cereal represented here by locally adaptable maturity choices.', 'medium', '90–150 days depending on variety', 'Rainfall timing, fall armyworm monitoring, and variety maturity materially affect outcomes.', (SELECT id FROM sources WHERE name = 'Shamba Guide demo planting calendar')),
   ('Bean', 'A food and market legume that can support rotation and household nutrition.', 'low_to_medium', '65–100 days depending on variety', 'Waterlogging, seed-borne disease, and rainfall during flowering can reduce performance.', (SELECT id FROM sources WHERE name = 'Shamba Guide demo planting calendar')),

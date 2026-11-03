@@ -26,7 +26,7 @@ def emit(statement: str) -> None:
 
 def emit_file(name: str, *, ensure_planting_source: bool = False) -> None:
     for statement in _postgres_script((DATA_DIR / name).read_text(encoding="utf-8")):
-        if ensure_planting_source and "INSERT INTO crops" in statement.upper():
+        if ensure_planting_source and "INSERT INTO CROPS" in statement.upper():
             emit("""INSERT INTO sources (name, source_date, geographic_scope, evidence_status, limitations)
 VALUES ('Shamba Guide demo planting calendar', '2025-01-15', 'Selected demonstration counties', 'simulated',
 'Illustrative planning windows only; verify rainfall onset, soil condition, and current county advice before planting.')

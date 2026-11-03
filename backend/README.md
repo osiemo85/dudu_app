@@ -79,7 +79,7 @@ returns area-matched directory entries with a treatment/service label, indicativ
 and phone number. The records are simulated: they do not confirm business details,
 distance, stock, current price, product approval, or treatment suitability.
 
-The frontend reads `NEXT_PUBLIC_BACKEND_URL` from `frontend/.env.local` (default: `http://localhost:8000`). Configure `FRONTEND_URL` in `backend/.env` to set the origin allowed by backend CORS (default: `http://localhost:3000`).
+The frontend reads `NEXT_PUBLIC_BACKEND_URL` from `frontend/.env.local` (default: `http://localhost:8000`). Configure `FRONTEND_URL` in the backend environment with the allowed browser origin. Set this in Vercel for deployed environments; the backend deliberately has no URL fallback.
 
 The planting module is available under `/api/v1/planting/`. Its agent uses the
 OpenAI API and local simulated crop and weather records; an API key is required.

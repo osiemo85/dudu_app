@@ -12,7 +12,8 @@ load_dotenv(BACKEND_DIR / ".env")
 
 @dataclass(frozen=True)
 class Settings:
-    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    # CORS origins must be supplied by the runtime environment; never default to a URL.
+    frontend_url: str = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
     # Required. Supports PostgreSQL/Supabase and explicit sqlite:/// URLs.
     # There is intentionally no implicit local-database fallback.
     database_url: str = os.getenv("DATABASE_URL", "")

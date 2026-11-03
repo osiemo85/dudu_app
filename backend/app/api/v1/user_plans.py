@@ -9,7 +9,7 @@ router = APIRouter(tags=['accounts and saved plans'])
 
 def check_origin(request: Request) -> None:
     origin = request.headers.get('origin')
-    if origin and origin.rstrip('/') != settings.frontend_url.rstrip('/'):
+    if origin and origin.rstrip('/') != settings.frontend_url:
         raise HTTPException(status_code=403, detail='Origin not allowed.')
 
 
