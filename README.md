@@ -20,8 +20,14 @@ uv run uvicorn app.main:app --reload
 ```
 
 FastAPI requires `DATABASE_URL` and uses Supabase PostgreSQL when given its
-PostgreSQL URL, initializing editable simulated fixture tables on the first
-successful start. SQLite is available only through an explicit `sqlite:///...`
+PostgreSQL URL. Generate the manual seed, then paste it into Supabase SQL Editor:
+
+```bash
+cd backend
+uv run python scripts/export_supabase_seed.py > ../data/supabase_seed.sql
+```
+
+SQLite is available only through an explicit `sqlite:///...`
 URL for local testing; it is never selected by default. Keep this secret
 server-side; never add it to frontend environment files.
 

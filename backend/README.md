@@ -18,9 +18,17 @@ or create a local database implicitly. Prefer Supabase's pooler
 connection string for serverless or IPv4-only environments, and retain the
 required `sslmode=require` query parameter when Supabase provides it.
 
-On the first successful backend start, the app creates its tables and loads the
-editable, simulated demo fixtures. It does not connect to
-any live agricultural source. Existing rows are retained on later starts.
+Run the schema and fixture seed manually before deployment; the API never
+creates or alters tables at startup. It does not connect to any live
+agricultural source.
+
+```bash
+cd backend
+uv run python scripts/export_supabase_seed.py > ../data/supabase_seed.sql
+```
+
+Open Supabase Dashboard → **SQL Editor**, paste the generated file, and run it.
+The seed is additive and does not delete existing rows.
 
 Do not expose `DATABASE_URL` to the browser or commit it. The FastAPI service is
 the only component that should hold database credentials.
@@ -56,9 +64,9 @@ rejected provider requests. Server logs show the exception type and HTTP status,
 without printing provider error bodies or credentials. A running backend must
 be restarted after changing `.env`.
 
-With Supabase configured, the first API start creates the PostgreSQL schema and
-fixtures. An explicit `sqlite:///...` URL is supported only for local testing;
-there is no SQLite default. Both stores are editable through `/api/v1/admin/*`
+With Supabase configured, run the exported seed manually to create the
+PostgreSQL schema and fixtures. An explicit `sqlite:///...` URL is supported
+only for local testing; there is no SQLite default. Both stores are editable through `/api/v1/admin/*`
 or the admin UI. Seed records are simulated and are not live
 government, outbreak, weather, supplier, or regulatory data.
 
