@@ -20,8 +20,7 @@ def list_crops() -> list[dict[str, Any]]:
 
 
 def find_calendars(county: str, season: str, crop: str | None = None) -> list[dict[str, Any]]:
-    return _rows(
-        """
+    query = """
         SELECT planting_calendars.*, crops.name crop, crops.summary crop_summary,
                crops.water_requirement, crops.typical_maturity_days, crops.risk_notes,
                sources.name source_name, sources.source_date,
@@ -32,13 +31,17 @@ def find_calendars(county: str, season: str, crop: str | None = None) -> list[di
         JOIN sources ON sources.id = planting_calendars.source_id
         WHERE lower(planting_calendars.county) = lower(?)
           AND lower(planting_calendars.season_label) = lower(?)
-          AND (? IS NULL OR lower(crops.name) = lower(?))
+    """
+    parameters: tuple[Any, ...] = (county, season)
+    if crop is not None:
+        query += " AND lower(crops.name) = lower(?)"
+        parameters += (crop,)
+    query += """
         ORDER BY CASE planting_calendars.suitability
                    WHEN 'strong' THEN 1 WHEN 'conditional' THEN 2 ELSE 3 END,
                  crops.name
-        """,
-        (county, season, crop, crop),
-    )
+    """
+    return _rows(query, parameters)
 
 
 def get_weather(county: str, season: str) -> dict[str, Any] | None:

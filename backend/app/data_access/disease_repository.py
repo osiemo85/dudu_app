@@ -61,15 +61,16 @@ def resolve_season(county: str, label: str) -> dict[str, Any] | None:
 
 
 def search_disease_candidates(crop: str | None, symptoms: str, affected_part: str | None, limit: int = 3) -> list[dict[str, Any]]:
-    diseases = _rows(
-        """
+    query = """
         SELECT diseases.*, sources.name source_name, sources.source_date,
                sources.geographic_scope, sources.evidence_status source_status, sources.limitations
         FROM diseases JOIN sources ON sources.id = diseases.source_id
-        WHERE (? IS NULL OR lower(diseases.crop) = lower(?))
-        """,
-        (crop, crop),
-    )
+    """
+    parameters: tuple[Any, ...] = ()
+    if crop is not None:
+        query += " WHERE lower(diseases.crop) = lower(?)"
+        parameters = (crop,)
+    diseases = _rows(query, parameters)
     tokens = set(re.findall(r"[a-z]+", symptoms.lower()))
     if affected_part:
         tokens.update(re.findall(r"[a-z]+", affected_part.lower()))
@@ -149,8 +150,7 @@ def get_treatments(county: str, crop: str | None, disease_ids: list[int]) -> lis
     if not disease_ids:
         return []
     placeholders = ",".join("?" for _ in disease_ids)
-    return _rows(
-        f"""
+    query = f"""
         SELECT treatments.*, diseases.common_name disease_name, sources.name source_name,
                sources.source_date, sources.geographic_scope source_scope,
                sources.evidence_status source_status, sources.limitations
@@ -158,11 +158,13 @@ def get_treatments(county: str, crop: str | None, disease_ids: list[int]) -> lis
         JOIN diseases ON diseases.id = treatments.disease_id
         JOIN sources ON sources.id = treatments.source_id
         WHERE treatments.disease_id IN ({placeholders})
-          AND (? IS NULL OR lower(treatments.crop) = lower(?))
-        ORDER BY treatments.id
-        """,
-        (*disease_ids, crop, crop),
-    )
+    """
+    parameters: tuple[Any, ...] = tuple(disease_ids)
+    if crop is not None:
+        query += " AND lower(treatments.crop) = lower(?)"
+        parameters += (crop,)
+    query += " ORDER BY treatments.id"
+    return _rows(query, parameters)
 
 
 def get_nearby_agrovets(county: str, area: str, disease_ids: list[int]) -> list[dict[str, Any]]:
