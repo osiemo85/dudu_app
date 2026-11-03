@@ -28,7 +28,7 @@ class DiseaseAnalysisTests(unittest.TestCase):
     def setUp(self) -> None:
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        database_settings = replace(settings, database_path=Path(directory.name) / "test.db", outbreak_evidence_dir=Path(directory.name) / "images")
+        database_settings = replace(settings, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}", outbreak_evidence_dir=Path(directory.name) / "images")
         self.enterContext(patch("app.services.outbreak_recorder.settings", database_settings))
         self.enterContext(patch("app.services.admin_service.settings", database_settings))
         self.enterContext(patch("app.data_access.database.settings", database_settings))

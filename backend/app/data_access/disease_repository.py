@@ -204,9 +204,10 @@ def save_disease_case(values: dict[str, Any], outbreak: dict[str, Any] | None) -
         outbreak_id = None
         if outbreak:
             connection.execute(
-                """INSERT OR IGNORE INTO sources
+                """INSERT INTO sources
                 (name, source_date, geographic_scope, evidence_status, limitations)
-                VALUES (?, 'ongoing', 'User-supplied location', 'awaiting_validation', ?)""",
+                VALUES (?, 'ongoing', 'User-supplied location', 'awaiting_validation', ?)
+                ON CONFLICT(name, source_date, geographic_scope) DO NOTHING""",
                 ("Farmer-submitted LLM observation", "Unverified observation saved for expert review; it is not an outbreak confirmation."),
             )
             source = connection.execute(

@@ -1,5 +1,10 @@
 import unittest
+from dataclasses import replace
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
+from app.core.config import settings
 from app.data_access.database import initialize_database
 from app.models.planting import PlantingRequest
 from app.services.planting_engine import recommend_planting
@@ -8,7 +13,18 @@ from app.services.planting_engine import recommend_planting
 class PlantingEngineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        cls.directory = TemporaryDirectory()
+        cls.settings_patch = patch(
+            "app.data_access.database.settings",
+            replace(settings, database_url=f"sqlite:///{Path(cls.directory.name) / 'test.db'}"),
+        )
+        cls.settings_patch.start()
         initialize_database()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.settings_patch.stop()
+        cls.directory.cleanup()
 
     def test_location_and_season_are_required(self) -> None:
         missing_location = recommend_planting(PlantingRequest())

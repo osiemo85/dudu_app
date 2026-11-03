@@ -13,7 +13,9 @@ load_dotenv(BACKEND_DIR / ".env")
 @dataclass(frozen=True)
 class Settings:
     frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    database_path: Path = Path(os.getenv("DATABASE_PATH", PROJECT_DIR / "data" / "advisory.db"))
+    # Required. Supports PostgreSQL/Supabase and explicit sqlite:/// URLs.
+    # There is intentionally no implicit local-database fallback.
+    database_url: str = os.getenv("DATABASE_URL", "")
     seed_path: Path = PROJECT_DIR / "data" / "seed.sql"
     outbreak_evidence_dir: Path = Path(os.getenv("OUTBREAK_EVIDENCE_DIR", PROJECT_DIR / "data" / "outbreak_evidence"))
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")

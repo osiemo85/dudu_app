@@ -2,11 +2,11 @@
 import hashlib
 import hmac
 import secrets
-import sqlite3
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, Request, Response
 
+import app.data_access.database as database_access
 from app.data_access.database import database
 from app.models.user_plans import Account, Credentials
 
@@ -39,7 +39,7 @@ def register(credentials: Credentials, response: Response, request: Request) -> 
             cursor = connection.execute('INSERT INTO users(email,password_hash,created_at) VALUES (?,?,?)',
                                         (credentials.email, encoded, datetime.now(UTC).isoformat()))
             user_id = cursor.lastrowid
-    except sqlite3.IntegrityError:
+    except database_access.IntegrityError:
         raise HTTPException(status_code=409, detail='An account with this email already exists.')
     _set_session(response, user_id, request)
     return Account(id=user_id, email=credentials.email)

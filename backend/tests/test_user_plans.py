@@ -14,7 +14,7 @@ class UserPlanTests(unittest.TestCase):
     def setUp(self):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.enterContext(patch('app.data_access.database.settings', replace(settings, database_path=Path(directory.name) / 'test.db')))
+        self.enterContext(patch('app.data_access.database.settings', replace(settings, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}")))
         self.client = self.enterContext(TestClient(app))
 
     def register(self, email):

@@ -14,9 +14,16 @@ outbreak, pesticide, government, or supplier services.
 cd backend
 cp .env.example .env
 # Put OPENAI_API_KEY in .env
+# Put the Supabase PostgreSQL connection string in DATABASE_URL.
 uv sync
 uv run uvicorn app.main:app --reload
 ```
+
+FastAPI requires `DATABASE_URL` and uses Supabase PostgreSQL when given its
+PostgreSQL URL, initializing editable simulated fixture tables on the first
+successful start. SQLite is available only through an explicit `sqlite:///...`
+URL for local testing; it is never selected by default. Keep this secret
+server-side; never add it to frontend environment files.
 
 The OpenAI Agents SDK uses `OPENAI_API_KEY` and `OPENAI_MODEL` through the Responses API. OpenRouter and the manual chat-completions loop are no longer used. Without an OpenAI key, written symptom matching remains available; photos require OpenAI.
 Results show whether AI analysis completed and whether the photo was analyzed.
@@ -63,8 +70,7 @@ Open `http://localhost:3000`. The defaults expect FastAPI at
    Clarifications and AI failures can also be saved; they never create outbreak matches.
    A report or storage failure is visible without discarding a completed identification.
 
-The SQLite file is created at `data/advisory.db` on first backend start. Edit
-`data/seed.sql` to change fresh-install sample data. Existing databases keep
+Edit `data/seed.sql` to change fresh-install sample data. Existing databases keep
 admin edits across restarts. Consented review photos are stored locally under
 `data/outbreak_evidence/` and are git-ignored.
 

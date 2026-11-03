@@ -5,9 +5,25 @@ Install and run with `uv` from this directory:
 ```bash
 cp .env.example .env
 # Add OPENAI_API_KEY to .env
+# Add DATABASE_URL from Supabase Connect.
 uv sync
 uv run uvicorn app.main:app --reload
 ```
+
+## Supabase PostgreSQL
+
+Set `DATABASE_URL` in `backend/.env` to the PostgreSQL connection string from
+Supabase **Connect**. This setting is required: the app does not select SQLite
+or create a local database implicitly. Prefer Supabase's pooler
+connection string for serverless or IPv4-only environments, and retain the
+required `sslmode=require` query parameter when Supabase provides it.
+
+On the first successful backend start, the app creates its tables and loads the
+editable, simulated demo fixtures. It does not connect to
+any live agricultural source. Existing rows are retained on later starts.
+
+Do not expose `DATABASE_URL` to the browser or commit it. The FastAPI service is
+the only component that should hold database credentials.
 
 The disease form and API require the user to select the crop. The service uses the OpenAI Agents SDK and Responses API when `OPENAI_API_KEY`
 is set. `OPENAI_MODEL` defaults to `gpt-4.1-mini`. OpenRouter is no longer selected.
@@ -40,10 +56,11 @@ rejected provider requests. Server logs show the exception type and HTTP status,
 without printing provider error bodies or credentials. A running backend must
 be restarted after changing `.env`.
 
-The first API start creates `../data/advisory.db` from `../data/seed.sql`.
-The SQLite database is persistent and editable through `/api/v1/admin/*` or the
-admin UI. Seed records are simulated and are not live government, outbreak,
-weather, supplier, or regulatory data.
+With Supabase configured, the first API start creates the PostgreSQL schema and
+fixtures. An explicit `sqlite:///...` URL is supported only for local testing;
+there is no SQLite default. Both stores are editable through `/api/v1/admin/*`
+or the admin UI. Seed records are simulated and are not live
+government, outbreak, weather, supplier, or regulatory data.
 
 ## Nearby agrovet directory
 

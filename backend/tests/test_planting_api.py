@@ -19,7 +19,7 @@ class PlantingApiTests(unittest.TestCase):
     def setUp(self):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        test_settings = replace(settings, database_path=Path(directory.name) / "test.db", openai_api_key="test-key")
+        test_settings = replace(settings, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}", openai_api_key="test-key")
         self.enterContext(patch("app.data_access.database.settings", test_settings))
         self.enterContext(patch("app.services.planting_agent.settings", test_settings))
         self.client = self.enterContext(TestClient(app))
