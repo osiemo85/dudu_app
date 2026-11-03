@@ -12,8 +12,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-The default API origin is `http://localhost:8000`. Override both `FASTAPI_URL`
-and `NEXT_PUBLIC_FASTAPI_URL` when the backend is hosted elsewhere.
+Set `NEXT_PUBLIC_BACKEND_URL` in `frontend/.env.local` to configure the backend API origin (default: `http://localhost:8000`).
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

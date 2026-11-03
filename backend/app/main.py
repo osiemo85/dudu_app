@@ -9,6 +9,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.planting import router as planting_router
 from app.data_access.database import initialize_database
 from app.api.v1.user_plans import router as user_plans_router
+from app.core.config import settings
 
 
 @asynccontextmanager
@@ -25,7 +26,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[settings.frontend_url.rstrip("/")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

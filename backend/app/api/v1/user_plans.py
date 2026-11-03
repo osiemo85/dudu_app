@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.models.user_plans import Account, Credentials, NoteCreate, PlanNote, SavePlanRequest, SavedPlan, SavedPlanDetail
 from app.services import accounts, user_plans
+from app.core.config import settings
 
 router = APIRouter(tags=['accounts and saved plans'])
 
 
 def check_origin(request: Request) -> None:
     origin = request.headers.get('origin')
-    if origin and origin not in {'http://localhost:3000', 'http://127.0.0.1:3000'}:
+    if origin and origin.rstrip('/') != settings.frontend_url.rstrip('/'):
         raise HTTPException(status_code=403, detail='Origin not allowed.')
 
 

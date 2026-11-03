@@ -54,9 +54,7 @@ returns area-matched directory entries with a treatment/service label, indicativ
 and phone number. The records are simulated: they do not confirm business details,
 distance, stock, current price, product approval, or treatment suitability.
 
-The frontend checks `http://localhost:8000/api/v1/health` by default. Set
-`FASTAPI_URL` for the server-rendered health check and
-`NEXT_PUBLIC_FASTAPI_URL` for browser requests when using another API origin.
+The frontend reads `NEXT_PUBLIC_BACKEND_URL` from `frontend/.env.local` (default: `http://localhost:8000`). Configure `FRONTEND_URL` in `backend/.env` to set the origin allowed by backend CORS (default: `http://localhost:3000`).
 
 The planting module is available under `/api/v1/planting/`. Its agent uses the
 OpenAI API and local simulated crop and weather records; an API key is required.
