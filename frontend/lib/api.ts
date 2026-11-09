@@ -3,8 +3,13 @@ export type ApiStatus = {
   message: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
-export const PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+/**
+ * Browser requests stay on the Next.js origin. `next.config.ts` proxies this
+ * path to FastAPI, so a browser opened through a remote/dev preview does not
+ * try to resolve its own `localhost:8000`.
+ */
+const API_BASE_URL = "";
+export const PUBLIC_API_BASE_URL = API_BASE_URL;
 
 export async function getApiStatus(): Promise<ApiStatus> {
   try {

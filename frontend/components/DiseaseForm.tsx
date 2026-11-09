@@ -145,7 +145,7 @@ export function DiseaseForm() {
       form.set("location_source", "user_selected");
     }
     try {
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/disease/identify`, { method: "POST", body: form });
+      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/disease/identify`, { method: "POST", body: form, credentials: "include" });
       if (!response.ok) throw new Error(await responseError(response));
       const payload: unknown = await response.json().catch(() => {
         throw new Error("The advisory service returned an unreadable response. Please try again.");

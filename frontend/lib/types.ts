@@ -100,6 +100,16 @@ export type LocationOption = {
 
 export type SeasonOption = { label: string; period: string };
 
+export type DiseaseCaseSummary = {
+  id: number; created_at: string; crop: string | null; location_label: string; season: string; status: string;
+  possible_matches: string[]; expert_approval: "pending" | "approved" | "rejected"; expert_review_note: string | null;
+};
+
+export type DiseaseCaseDetail = DiseaseCaseSummary & {
+  symptoms: string | null; affected_part: string | null; spread_pattern: string | null; next_actions: string[];
+  comments: Array<{ id: number; body: string; created_at: string }>;
+};
+
 export type CropOption = { name: string; summary: string };
 
 export type PlantingResponse = {

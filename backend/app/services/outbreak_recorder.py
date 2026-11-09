@@ -11,7 +11,7 @@ _IMAGE_SUFFIXES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".we
 
 
 def record_identification(request: DiseaseRequest, result: DiseaseResponse,
-                          image: bytes | None, image_content_type: str | None) -> RecordingStatus:
+                          image: bytes | None, image_content_type: str | None, user_id: int | None = None) -> RecordingStatus:
     if not request.save_for_expert_review:
         return RecordingStatus()
     recorded_at = datetime.now(UTC).isoformat()
@@ -27,7 +27,7 @@ def record_identification(request: DiseaseRequest, result: DiseaseResponse,
         # Recorded-at identifies this submitted analysis, never symptom onset.
         snapshot = result.model_dump(exclude={"recording"})
         values = {
-            "workflow_id": result.workflow_id, "created_at": recorded_at,
+            "user_id": user_id, "workflow_id": result.workflow_id, "created_at": recorded_at,
             "crop": result.crop, "county": result.location.county, "area": result.location.area,
             "season": result.season.label, "status": result.status, "engine": result.engine,
             "agent_runs_json": json.dumps([run.model_dump() for run in result.agent_runs]),

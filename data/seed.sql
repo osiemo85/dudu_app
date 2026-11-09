@@ -293,6 +293,7 @@ INSERT OR IGNORE INTO input_records (crop_id, input_type, name, geographic_scope
 -- The response/evidence snapshot is immutable through generic admin editing.
 CREATE TABLE IF NOT EXISTS disease_cases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
     workflow_id TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL,
     crop TEXT,

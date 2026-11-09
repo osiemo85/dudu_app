@@ -230,3 +230,42 @@ def save_disease_case(values: dict[str, Any], outbreak: dict[str, Any] | None) -
             tuple(values[column] for column in columns),
         )
         return int(cursor.lastrowid)
+
+
+def list_user_cases(user_id: int) -> list[dict[str, Any]]:
+    with database() as connection:
+        return [dict(row) for row in connection.execute(
+            """SELECT id, created_at, crop, county, area, season, status, expert_approval, expert_review_note, result_json
+               FROM disease_cases WHERE user_id = ? ORDER BY created_at DESC LIMIT 100""", (user_id,)
+        ).fetchall()]
+
+
+def get_user_case(case_id: int, user_id: int) -> dict[str, Any] | None:
+    with database() as connection:
+        row = connection.execute(
+            """SELECT id, created_at, crop, county, area, season, status, expert_approval, expert_review_note,
+                      observation_json, result_json
+               FROM disease_cases WHERE id = ? AND user_id = ?""", (case_id, user_id)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def list_case_comments(case_id: int, user_id: int) -> list[dict[str, Any]]:
+    with database() as connection:
+        return [dict(row) for row in connection.execute(
+            "SELECT id, body, created_at FROM disease_case_comments WHERE disease_case_id = ? AND user_id = ? ORDER BY created_at ASC",
+            (case_id, user_id),
+        ).fetchall()]
+
+
+def add_case_comment(case_id: int, user_id: int, body: str, created_at: str) -> dict[str, Any] | None:
+    with database() as connection:
+        owns_case = connection.execute("SELECT 1 FROM disease_cases WHERE id = ? AND user_id = ?", (case_id, user_id)).fetchone()
+        if not owns_case:
+            return None
+        cursor = connection.execute(
+            "INSERT INTO disease_case_comments(disease_case_id, user_id, body, created_at) VALUES (?, ?, ?, ?)",
+            (case_id, user_id, body, created_at),
+        )
+        row = connection.execute("SELECT id, body, created_at FROM disease_case_comments WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    return dict(row) if row else None

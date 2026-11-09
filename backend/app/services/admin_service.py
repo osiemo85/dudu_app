@@ -1,5 +1,6 @@
 from typing import Any
 from pathlib import Path
+import json
 
 from fastapi import HTTPException
 
@@ -85,6 +86,13 @@ def list_records(table: str, module: str | None = None) -> dict[str, Any]:
     columns = _columns(table)
     with database() as connection:
         records = [dict(row) for row in connection.execute(f"SELECT * FROM {table} ORDER BY id DESC LIMIT 200").fetchall()]
+        if table == "disease_cases":
+            for record in records:
+                comments = connection.execute(
+                    "SELECT body, created_at FROM disease_case_comments WHERE disease_case_id = ? ORDER BY created_at ASC",
+                    (record["id"],),
+                ).fetchall()
+                record["farmer_comments_json"] = json.dumps([dict(comment) for comment in comments])
     return {"table": table, "editable_columns": list(columns), "records": records}
 
 
@@ -111,10 +119,19 @@ def update_record(table: str, record_id: int, values: dict[str, Any], module: st
     supplied = [column for column in columns if column in values]
     if not supplied:
         raise HTTPException(status_code=422, detail="No editable values supplied")
-    if table == "disease_cases" and "expert_approval" in values and values["expert_approval"] not in {"pending", "approved", "rejected"}:
-        raise HTTPException(status_code=422, detail="Invalid expert review status")
     assignments = ", ".join(f"{column} = ?" for column in supplied)
     with database() as connection:
+        if table == "disease_cases" and "expert_approval" in values:
+            approval = values["expert_approval"]
+            if approval not in {"pending", "approved", "rejected"}:
+                raise HTTPException(status_code=422, detail="Invalid expert review status")
+            if approval in {"approved", "rejected"}:
+                existing = connection.execute(
+                    "SELECT expert_review_note FROM disease_cases WHERE id = ?", (record_id,)
+                ).fetchone()
+                review_note = values.get("expert_review_note", existing["expert_review_note"] if existing else None)
+                if not isinstance(review_note, str) or not review_note.strip():
+                    raise HTTPException(status_code=422, detail="Add an expert review note before approving or rejecting a case")
         cursor = connection.execute(f"UPDATE {table} SET {assignments} WHERE id = ?", (*[values[column] for column in supplied], record_id))
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="Record not found")

@@ -121,6 +121,44 @@ class RecordingStatus(BaseModel):
     message: str = "This observation was not saved for expert review."
 
 
+class DiseaseCaseCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("body")
+    @classmethod
+    def comment_must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Enter a comment")
+        return value
+
+
+class DiseaseCaseComment(BaseModel):
+    id: int
+    body: str
+    created_at: str
+
+
+class DiseaseCaseSummary(BaseModel):
+    id: int
+    created_at: str
+    crop: str | None
+    location_label: str
+    season: str
+    status: str
+    possible_matches: list[str] = Field(default_factory=list)
+    expert_approval: Literal["pending", "approved", "rejected"]
+    expert_review_note: str | None = None
+
+
+class DiseaseCaseDetail(DiseaseCaseSummary):
+    symptoms: str | None = None
+    affected_part: str | None = None
+    spread_pattern: str | None = None
+    next_actions: list[str] = Field(default_factory=list)
+    comments: list[DiseaseCaseComment] = Field(default_factory=list)
+
+
 class DiseaseResponse(BaseModel):
     status: str
     crop: str

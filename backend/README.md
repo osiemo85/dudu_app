@@ -7,6 +7,7 @@ cp .env.example .env
 # Add OPENAI_API_KEY to .env
 # Add DATABASE_URL from Supabase Connect.
 uv sync
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
@@ -18,9 +19,8 @@ or create a local database implicitly. Prefer Supabase's pooler
 connection string for serverless or IPv4-only environments, and retain the
 required `sslmode=require` query parameter when Supabase provides it.
 
-Run the schema and fixture seed manually before deployment; the API never
-creates or alters tables at startup. It does not connect to any live
-agricultural source.
+Run the schema and fixture seed manually before deployment, then apply tracked
+Alembic migrations. The API does not connect to any live agricultural source.
 
 ```bash
 cd backend
@@ -29,6 +29,19 @@ uv run python scripts/export_supabase_seed.py > ../data/supabase_seed.sql
 
 Open Supabase Dashboard → **SQL Editor**, paste the generated file, and run it.
 The seed is additive and does not delete existing rows.
+
+Then run:
+
+```bash
+uv run alembic upgrade head
+```
+
+Alembic tracks structural schema changes in `backend/alembic/versions/`. The
+editable simulated fixtures remain in `data/`; do not use migrations to replace
+contributor-edited fixture data. For a new migration, use
+`uv run alembic revision -m "describe the change"`, add explicit portable SQL or
+Alembic operations, then run `uv run alembic upgrade head` against a copy of the
+target database first.
 
 Do not expose `DATABASE_URL` to the browser or commit it. The FastAPI service is
 the only component that should hold database credentials.
@@ -81,8 +94,8 @@ distance, stock, current price, product approval, or treatment suitability.
 
 The frontend reads `NEXT_PUBLIC_BACKEND_URL` from `frontend/.env.local` (default: `http://localhost:8000`). Configure `FRONTEND_URL` in the backend environment with the allowed browser origin. Set this in Vercel for deployed environments; the backend deliberately has no URL fallback.
 
-The planting module is available under `/api/v1/planting/`. Its agent uses the
-OpenAI API and local simulated crop and weather records; an API key is required.
+The planting API is currently not registered. Existing planting records are kept
+in the database without being exposed by the application.
 
 ## Expert-review observations
 

@@ -4,11 +4,11 @@ import hmac
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from fastapi import HTTPException, Request, Response
+from fastapi import Depends, HTTPException, Request, Response
 
 import app.data_access.database as database_access
 from app.data_access.database import database
-from app.models.user_plans import Account, Credentials
+from app.models.user_plans import Account, Credentials, Registration
 
 COOKIE_NAME = 'shamba_session'
 SESSION_SECONDS = 7 * 24 * 60 * 60
@@ -31,41 +31,56 @@ def _set_session(response: Response, user_id: int, request: Request) -> None:
                         secure=request.url.scheme == 'https', samesite='lax', path='/')
 
 
-def register(credentials: Credentials, response: Response, request: Request) -> Account:
+def register(registration: Registration, response: Response, request: Request) -> Account:
     salt = secrets.token_bytes(16)
-    encoded = f'{salt.hex()}:{_password_hash(credentials.password, salt)}'
+    encoded = f'{salt.hex()}:{_password_hash(registration.password, salt)}'
     try:
         with database() as connection:
-            cursor = connection.execute('INSERT INTO users(email,password_hash,created_at) VALUES (?,?,?)',
-                                        (credentials.email, encoded, datetime.now(UTC).isoformat()))
+            cursor = connection.execute('INSERT INTO users(name,email,password_hash,role,created_at) VALUES (?,?,?,?,?)',
+                                        (registration.name, registration.email, encoded, 'user', datetime.now(UTC).isoformat()))
             user_id = cursor.lastrowid
     except database_access.IntegrityError:
         raise HTTPException(status_code=409, detail='An account with this email already exists.')
     _set_session(response, user_id, request)
-    return Account(id=user_id, email=credentials.email)
+    return Account(id=user_id, name=registration.name, email=registration.email, role='user')
 
 
 def login(credentials: Credentials, response: Response, request: Request) -> Account:
     with database() as connection:
-        row = connection.execute('SELECT id,email,password_hash FROM users WHERE email=?', (credentials.email,)).fetchone()
+        row = connection.execute('SELECT id,name,email,role,password_hash FROM users WHERE email=?', (credentials.email,)).fetchone()
     # Perform the same password derivation even if the account is absent.
     salt_hex, expected = row['password_hash'].split(':') if row else ('00' * 16, '00' * 64)
     actual = _password_hash(credentials.password, bytes.fromhex(salt_hex))
     if not row or not hmac.compare_digest(actual, expected):
         raise HTTPException(status_code=401, detail='Incorrect email or password.')
     _set_session(response, row['id'], request)
-    return Account(id=row['id'], email=row['email'])
+    return Account(id=row['id'], name=row['name'], email=row['email'], role=row['role'])
 
 
 def current_user(request: Request) -> Account:
     token = request.cookies.get(COOKIE_NAME)
     if token:
         with database() as connection:
-            row = connection.execute('''SELECT u.id,u.email FROM user_sessions s JOIN users u ON u.id=s.user_id
+            row = connection.execute('''SELECT u.id,u.name,u.email,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id
                 WHERE s.token_hash=? AND s.expires_at>?''', (_token_hash(token), datetime.now(UTC).isoformat())).fetchone()
         if row:
             return Account(**dict(row))
-    raise HTTPException(status_code=401, detail='Please log in to access your saved plans.')
+    raise HTTPException(status_code=401, detail='Please log in to continue.')
+
+
+def current_admin(account: Account = Depends(current_user)) -> Account:
+    if account.role != 'admin':
+        raise HTTPException(status_code=403, detail='Administrator access is required.')
+    return account
+
+
+def optional_current_user(request: Request) -> Account | None:
+    try:
+        return current_user(request)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return None
+        raise
 
 
 def logout(request: Request, response: Response) -> None:

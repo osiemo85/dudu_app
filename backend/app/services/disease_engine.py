@@ -224,11 +224,11 @@ def _identify_disease(request: DiseaseRequest, image: bytes | None, image_conten
     )
 
 
-def identify_disease(request: DiseaseRequest, image: bytes | None, image_content_type: str | None) -> DiseaseResponse:
+def identify_disease(request: DiseaseRequest, image: bytes | None, image_content_type: str | None, user_id: int | None = None) -> DiseaseResponse:
     result = _identify_disease(request, image, image_content_type)
     result.workflow_id = uuid4().hex
     try:
-        result.recording = record_identification(request, result, image, image_content_type)
+        result.recording = record_identification(request, result, image, image_content_type, user_id)
     except Exception as exc:
         logger.warning("Disease history save failed: error_type=%s", type(exc).__name__)
         result.recording = RecordingStatus(status="failed", message="The result could not be saved for officer review. Please retry; this result remains available here.")

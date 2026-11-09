@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Shamba Guide | Agricultural Advisory Demo",
-  description: "A demonstration of locally informed crop health and planting support.",
+  description: "A demonstration of locally informed crop health guidance.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

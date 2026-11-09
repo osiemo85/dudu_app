@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
 
-type Account = { id: number; email: string };
+type Account = { id: number; name: string; email: string; role: "user" | "admin" };
 
 export function AccountNav() {
   const router = useRouter();
@@ -35,18 +35,18 @@ export function AccountNav() {
       if (!response.ok) throw new Error();
       setAccount(null);
       window.dispatchEvent(new Event("account-changed"));
-      router.push("/planting");
+      router.replace("/");
       router.refresh();
     } catch { setError("Could not log out. Please try again."); }
   }
   return <div className="flex flex-wrap items-center justify-end gap-3 border-b border-emerald-100 bg-white px-5 py-3 text-sm sm:px-8">
     {loading ? <span className="text-slate-500">Checking account…</span> : account ? <>
-      <span className="max-w-48 truncate text-slate-600">{account.email}</span>
-      <Link href="/planting/plans" className="font-semibold text-emerald-700 underline">My plans</Link>
+      <span className="max-w-48 truncate text-slate-600">{account.name || account.email}{account.role === "admin" ? " · Admin" : ""}</span>
+      {account.role === "admin" && <Link href="/disease/admin" className="font-semibold text-emerald-700 underline">Information databases</Link>}
       <button type="button" onClick={logout} className="rounded-full border border-emerald-700 px-4 py-2 font-semibold text-emerald-800">Log out</button>
     </> : <>
-      <Link href="/planting/account/login" className="rounded-full border border-emerald-700 px-4 py-2 font-semibold text-emerald-800">Log in</Link>
-      <Link href="/planting/account/register" className="rounded-full bg-emerald-700 px-4 py-2 font-semibold text-white">Register</Link>
+      <Link href="/account/login" className="rounded-full border border-emerald-700 px-4 py-2 font-semibold text-emerald-800">Log in</Link>
+      <Link href="/account/register" className="rounded-full bg-emerald-700 px-4 py-2 font-semibold text-white">Register</Link>
     </>}
     {error && <span role="alert" className="text-red-700">{error}</span>}
   </div>;

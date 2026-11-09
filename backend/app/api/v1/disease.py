@@ -1,11 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from app.data_access import disease_repository as repository
-from app.models.disease import DiseaseRequest, DiseaseResponse, LocationOption, NearbyAgrovetsResponse, SeasonOption
+from app.models.disease import DiseaseCaseComment, DiseaseCaseCommentCreate, DiseaseCaseDetail, DiseaseCaseSummary, DiseaseRequest, DiseaseResponse, LocationOption, NearbyAgrovetsResponse, SeasonOption
 from app.services.agrovet_service import find_nearby_agrovets
+from app.services.accounts import current_user, optional_current_user
+from app.models.user_plans import Account
+from app.services import disease_case_history
 from app.services.disease_engine import identify_disease
 
 router = APIRouter(prefix="/disease", tags=["disease identification"])
@@ -45,6 +48,7 @@ async def identify(
     season: Annotated[str | None, Form()] = None,
     save_for_expert_review: Annotated[bool, Form()] = False,
     image: Annotated[UploadFile | None, File()] = None,
+    account: Account | None = Depends(optional_current_user),
 ) -> DiseaseResponse:
     if image and image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(status_code=415, detail="Upload a JPEG, PNG, or WebP image.")
@@ -57,4 +61,19 @@ async def identify(
         longitude=longitude, location_source=location_source, season=season,
         save_for_expert_review=save_for_expert_review,
     )
-    return await run_in_threadpool(identify_disease, request, image_bytes, image.content_type if image else None)
+    return await run_in_threadpool(identify_disease, request, image_bytes, image.content_type if image else None, account.id if account else None)
+
+
+@router.get("/cases", response_model=list[DiseaseCaseSummary])
+def cases(account: Account = Depends(current_user)) -> list[DiseaseCaseSummary]:
+    return disease_case_history.list_cases(account.id)
+
+
+@router.get("/cases/{case_id}", response_model=DiseaseCaseDetail)
+def case(case_id: int, account: Account = Depends(current_user)) -> DiseaseCaseDetail:
+    return disease_case_history.case_detail(case_id, account.id)
+
+
+@router.post("/cases/{case_id}/comments", response_model=DiseaseCaseComment, status_code=201)
+def add_case_comment(case_id: int, comment: DiseaseCaseCommentCreate, account: Account = Depends(current_user)) -> DiseaseCaseComment:
+    return disease_case_history.add_comment(case_id, account.id, comment.body)

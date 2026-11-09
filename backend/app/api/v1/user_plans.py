@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from app.models.user_plans import Account, Credentials, NoteCreate, PlanNote, SavePlanRequest, SavedPlan, SavedPlanDetail
-from app.services import accounts, user_plans
+from app.models.user_plans import Account, Credentials, Registration
+from app.services import accounts
 from app.core.config import settings
 
-router = APIRouter(tags=['accounts and saved plans'])
+router = APIRouter(tags=['accounts'])
 
 
 def check_origin(request: Request) -> None:
@@ -14,7 +14,7 @@ def check_origin(request: Request) -> None:
 
 
 @router.post('/auth/register', response_model=Account, status_code=status.HTTP_201_CREATED, dependencies=[Depends(check_origin)])
-def register(data: Credentials, response: Response, request: Request) -> Account:
+def register(data: Registration, response: Response, request: Request) -> Account:
     return accounts.register(data, response, request)
 
 
@@ -31,23 +31,3 @@ def logout(request: Request, response: Response) -> None:
 @router.get('/auth/me', response_model=Account)
 def me(account: Account = Depends(accounts.current_user)) -> Account:
     return account
-
-
-@router.post('/saved-plans', response_model=SavedPlan, status_code=status.HTTP_201_CREATED, dependencies=[Depends(check_origin)])
-def save(data: SavePlanRequest, account: Account = Depends(accounts.current_user)) -> SavedPlan:
-    return user_plans.save(account.id, data)
-
-
-@router.get('/saved-plans', response_model=list[SavedPlan])
-def list_plans(account: Account = Depends(accounts.current_user)) -> list[SavedPlan]:
-    return user_plans.list_plans(account.id)
-
-
-@router.get('/saved-plans/{plan_id}', response_model=SavedPlanDetail)
-def detail(plan_id: int, account: Account = Depends(accounts.current_user)) -> SavedPlanDetail:
-    return user_plans.detail(account.id, plan_id)
-
-
-@router.post('/saved-plans/{plan_id}/notes', response_model=PlanNote, status_code=status.HTTP_201_CREATED, dependencies=[Depends(check_origin)])
-def add_note(plan_id: int, note: NoteCreate, account: Account = Depends(accounts.current_user)) -> PlanNote:
-    return user_plans.add_note(account.id, plan_id, note)

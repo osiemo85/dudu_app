@@ -20,9 +20,31 @@ class Credentials(BaseModel):
         return value
 
 
+class Registration(Credentials):
+    name: str = Field(min_length=1, max_length=120)
+    password_confirmation: str = Field(min_length=8, max_length=128)
+
+    @field_validator('name')
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = ' '.join(value.split())
+        if not value:
+            raise ValueError('Enter your name')
+        return value
+
+    @field_validator('password_confirmation')
+    @classmethod
+    def passwords_match(cls, value: str, info) -> str:
+        if 'password' in info.data and value != info.data['password']:
+            raise ValueError('Passwords do not match')
+        return value
+
+
 class Account(BaseModel):
     id: int
+    name: str
     email: str
+    role: Literal['user', 'admin']
 
 
 class SavePlanRequest(BaseModel):
