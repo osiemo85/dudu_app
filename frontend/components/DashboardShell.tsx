@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
 
@@ -22,7 +22,7 @@ const adminDatabases = [
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [account, setAccount] = useState<Account | null>(null);
-  const isAdmin = pathname === "/disease/admin";
+  const isAdmin = pathname === "/disease/admin" || pathname.startsWith("/disease/admin/");
   const isCases = pathname === "/disease/cases" || pathname.startsWith("/disease/cases/");
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           <p className="hidden px-3 pb-2 text-xs font-bold uppercase tracking-[0.18em] text-emerald-200 md:block">Crop health</p>
           <SidebarLink href="/disease" active={!isAdmin && !isCases} icon="🔎">Dashboard</SidebarLink>
           <SidebarLink href="/disease/cases" active={isCases} icon="📋">My cases</SidebarLink>
-          {account?.role === "admin" && <SidebarLink href="/disease/admin" active={isAdmin} icon="▦">Information databases</SidebarLink>}
+          {account?.role === "admin" && <SidebarLink href="/disease/admin/disease_cases" active={isAdmin} icon="▦">Information databases</SidebarLink>}
         </nav>
 
         <div className="hidden border-t border-white/15 px-4 py-5 md:mt-auto md:block">
@@ -72,8 +72,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 }
 
 function AdminDatabaseNav() {
-  const searchParams = useSearchParams();
-  const selectedTable = searchParams.get("table") ?? "disease_cases";
+  const pathname = usePathname();
+  const selectedTable = pathname.split("/").at(-1) ?? "disease_cases";
 
   return (
     <nav aria-label="Information databases" className="border-b border-emerald-100 bg-white px-4 py-3 sm:px-6">
@@ -82,7 +82,7 @@ function AdminDatabaseNav() {
           const active = table === selectedTable;
           return <Link
             key={table}
-            href={`/disease/admin?table=${table}`}
+            href={`/disease/admin/${table}`}
             aria-current={active ? "page" : undefined}
             className={`inline-flex items-center rounded-lg border px-3 py-2 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${active
               ? "border-emerald-700 bg-emerald-700 text-white shadow-sm"

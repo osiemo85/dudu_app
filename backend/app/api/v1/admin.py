@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import FileResponse
 
 from app.models.admin import AdminRecord, AdminTable, OutbreakReview
@@ -25,8 +25,17 @@ def review_outbreak(outbreak_id: int, review: OutbreakReview, _: Account = Depen
 
 
 @router.get("/{module}/{table}", response_model=AdminTable)
-def module_records(module: str, table: str, _: Account = Depends(current_admin)) -> AdminTable:
-    return AdminTable(**admin_service.list_records(table, module=module))
+def module_records(
+    module: str,
+    table: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=5, le=100),
+    search: str = Query(default="", max_length=120),
+    filter_field: str | None = Query(default=None),
+    filter_value: str | None = Query(default=None, max_length=120),
+    _: Account = Depends(current_admin),
+) -> AdminTable:
+    return AdminTable(**admin_service.list_records(table, module=module, page=page, page_size=page_size, search=search, filter_field=filter_field, filter_value=filter_value))
 
 
 @router.post("/{module}/{table}")
@@ -46,8 +55,16 @@ def module_delete(module: str, table: str, record_id: int, _: Account = Depends(
 
 
 @router.get("/{table}", response_model=AdminTable)
-def records(table: str, _: Account = Depends(current_admin)) -> AdminTable:
-    return AdminTable(**admin_service.list_records(table))
+def records(
+    table: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=5, le=100),
+    search: str = Query(default="", max_length=120),
+    filter_field: str | None = Query(default=None),
+    filter_value: str | None = Query(default=None, max_length=120),
+    _: Account = Depends(current_admin),
+) -> AdminTable:
+    return AdminTable(**admin_service.list_records(table, page=page, page_size=page_size, search=search, filter_field=filter_field, filter_value=filter_value))
 
 
 @router.post("/{table}")

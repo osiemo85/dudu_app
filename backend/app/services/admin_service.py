@@ -80,12 +80,44 @@ def validate_module_table(module: str, table: str) -> None:
         raise HTTPException(status_code=404, detail="This table does not belong to the selected dashboard")
 
 
-def list_records(table: str, module: str | None = None) -> dict[str, Any]:
+REFERENCE_OPTIONS: dict[str, dict[str, tuple[str, str]]] = {
+    "seasons": {"source_id": ("sources", "name")},
+    "diseases": {"source_id": ("sources", "name")},
+    "disease_symptoms": {"disease_id": ("diseases", "common_name")},
+    "treatments": {"disease_id": ("diseases", "common_name"), "source_id": ("sources", "name")},
+    "agrovets": {"disease_id": ("diseases", "common_name"), "source_id": ("sources", "name")},
+    "outbreaks": {"disease_id": ("diseases", "common_name"), "source_id": ("sources", "name")},
+}
+
+
+def list_records(
+    table: str,
+    module: str | None = None,
+    *,
+    page: int = 1,
+    page_size: int = 25,
+    search: str = "",
+    filter_field: str | None = None,
+    filter_value: str | None = None,
+) -> dict[str, Any]:
     if module:
         validate_module_table(module, table)
     columns = _columns(table)
+    if filter_field and filter_field not in ("id", *columns):
+        raise HTTPException(status_code=422, detail="That field cannot be used as a filter")
+    conditions: list[str] = []
+    values: list[Any] = []
+    if search.strip():
+        searchable = ("id", *columns)
+        conditions.append("(" + " OR ".join(f"CAST({column} AS TEXT) LIKE ?" for column in searchable) + ")")
+        values.extend([f"%{search.strip()}%"] * len(searchable))
+    if filter_field and filter_value is not None:
+        conditions.append(f"CAST({filter_field} AS TEXT) = ?")
+        values.append(filter_value)
+    where = f" WHERE {' AND '.join(conditions)}" if conditions else ""
     with database() as connection:
-        records = [dict(row) for row in connection.execute(f"SELECT * FROM {table} ORDER BY id DESC LIMIT 200").fetchall()]
+        total = connection.execute(f"SELECT COUNT(*) FROM {table}{where}", values).fetchone()[0]
+        records = [dict(row) for row in connection.execute(f"SELECT * FROM {table}{where} ORDER BY id DESC LIMIT ? OFFSET ?", (*values, page_size, (page - 1) * page_size)).fetchall()]
         if table == "disease_cases":
             for record in records:
                 comments = connection.execute(
@@ -93,7 +125,11 @@ def list_records(table: str, module: str | None = None) -> dict[str, Any]:
                     (record["id"],),
                 ).fetchall()
                 record["farmer_comments_json"] = json.dumps([dict(comment) for comment in comments])
-    return {"table": table, "editable_columns": list(columns), "records": records}
+        reference_options = {
+            field: [dict(row) for row in connection.execute(f"SELECT id, {label} AS label FROM {reference_table} ORDER BY {label}, id").fetchall()]
+            for field, (reference_table, label) in REFERENCE_OPTIONS.get(table, {}).items()
+        }
+    return {"table": table, "editable_columns": list(columns), "records": records, "total": total, "page": page, "page_size": page_size, "reference_options": reference_options}
 
 
 def create_record(table: str, values: dict[str, Any], module: str | None = None) -> dict[str, Any]:

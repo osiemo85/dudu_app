@@ -1,209 +1,91 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
+import { RecordModal } from "./RecordModal";
 
-const tablesByModule = {
-  "crop-health": ["disease_cases","sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "agrovets", "outbreaks"],
-} as const;
-type AdminModule = keyof typeof tablesByModule;
-type TableName = (typeof tablesByModule)[AdminModule][number];
-const tableDescriptions: Record<TableName, string> = {
-  disease_cases: "Consented disease case history: farmer observations, agent identities and runs, findings, source evidence, and officer review. AI findings remain unverified.",
-  sources: "Attributable evidence sources, including their date, geographic coverage, status, and limitations.",
-  locations: "Demo counties and areas with manually supplied test coordinates and agro-ecological context.",
-  seasons: "County-specific sample season periods and the evidence basis used to resolve them.",
-  diseases: "Possible crop disease matches, their summaries, and supporting evidence references.",
-  disease_symptoms: "Weighted symptom signals linked to each possible disease match.",
-  treatments: "Source-backed, bounded treatment actions for a crop and disease; not pesticide prescriptions.",
-  agrovets: "Simulated area-matched agrovet directory and indicative service costs; never current stock, price, approval, or routing information.",
-  outbreaks: "Historical records and LLM observations awaiting expert approval; never live outbreak alerts.",
+export const cropHealthTables = ["disease_cases", "sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "agrovets", "outbreaks"] as const;
+export type CropHealthTable = (typeof cropHealthTables)[number];
+type Field = { key: string; label: string; type?: "text" | "textarea" | "number" | "date" | "select" | "checkbox"; options?: string[]; reference?: CropHealthTable; optional?: boolean };
+type TableConfig = { label: string; description: string; fields: Field[]; filters?: string[]; immutable?: boolean };
+type Option = { id: number; label: string };
+type TableData = { editable_columns: string[]; records: Array<Record<string, unknown>>; total: number; page: number; page_size: number; reference_options: Record<string, Option[]> };
+const statuses = ["simulated", "manually_supplied", "awaiting_validation", "verified"];
+const configs: Record<CropHealthTable, TableConfig> = {
+  disease_cases: { label: "Disease cases", description: "Consented farmer case history. Findings remain unverified until reviewed.", immutable: true, fields: [{ key: "crop", label: "Crop" }, { key: "location_label", label: "Location" }, { key: "season_label", label: "Season" }, { key: "expert_approval", label: "Review decision", type: "select", options: ["approved", "rejected"] }, { key: "expert_review_note", label: "Expert review note", type: "textarea" }] },
+  sources: { label: "Sources", description: "Attributable simulated evidence used by this demo.", filters: ["evidence_status"], fields: [{ key: "name", label: "Source name" }, { key: "source_date", label: "Date or period" }, { key: "geographic_scope", label: "Geographic coverage" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }, { key: "limitations", label: "Limitations", type: "textarea" }] },
+  locations: { label: "Locations", description: "Demo counties and areas. Coordinates are manually supplied test data, not verified farmer GPS.", filters: ["county", "evidence_status"], fields: [{ key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "latitude", label: "Latitude", type: "number" }, { key: "longitude", label: "Longitude", type: "number" }, { key: "agro_ecological_context", label: "Agro-ecological context", type: "textarea" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
+  seasons: { label: "Seasons", description: "County-specific sample season periods and their evidence basis.", filters: ["county"], fields: [{ key: "county", label: "County" }, { key: "label", label: "Season" }, { key: "period", label: "Period" }, { key: "start_month", label: "Start month", type: "number" }, { key: "end_month", label: "End month", type: "number" }, { key: "basis", label: "Evidence basis", type: "textarea" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }] },
+  diseases: { label: "Diseases", description: "Possible disease matches used for bounded symptom matching—not confirmed diagnoses.", filters: ["crop", "evidence_status"], fields: [{ key: "crop", label: "Crop" }, { key: "common_name", label: "Common name" }, { key: "scientific_name", label: "Scientific name", optional: true }, { key: "summary", label: "Summary", type: "textarea" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
+  disease_symptoms: { label: "Disease symptoms", description: "Weighted symptom signals linked to a possible disease match.", fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "plant_part", label: "Plant part" }, { key: "symptom", label: "Symptom" }, { key: "weight", label: "Match weight", type: "number" }] },
+  treatments: { label: "Treatment context", description: "Source-backed, bounded actions. These are not pesticide prescriptions.", filters: ["crop", "evidence_status"], fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "crop", label: "Crop" }, { key: "geographic_scope", label: "Geographic coverage" }, { key: "action", label: "Recommended action", type: "textarea" }, { key: "treatment_type", label: "Action type" }, { key: "requires_verified_diagnosis", label: "Requires verified diagnosis", type: "checkbox" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
+  agrovets: { label: "Agrovets", description: "Simulated directory entries and indicative costs; never current stock, price, approval, or routing information.", filters: ["county", "area", "evidence_status"], fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "name", label: "Business name" }, { key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "address", label: "Address" }, { key: "phone_number", label: "Phone number" }, { key: "treatment_name", label: "Service or treatment name" }, { key: "indicative_cost_kes", label: "Indicative cost (KES)" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
+  outbreaks: { label: "Outbreak records", description: "Historical simulated records and observations awaiting expert approval—not live alerts.", filters: ["county", "area", "evidence_status", "expert_approval"], fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "observed_period", label: "Observed period" }, { key: "report_summary", label: "Report summary", type: "textarea" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }, { key: "coordinate_status", label: "Coordinate status" }, { key: "latitude", label: "Latitude", type: "number", optional: true }, { key: "longitude", label: "Longitude", type: "number", optional: true }, { key: "llm_identified", label: "AI-assisted observation", type: "checkbox" }] },
 };
-type TableData = { table: string; editable_columns: string[]; records: Array<Record<string, unknown>> };
+const title = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+const blanks = (fields: Field[]) => Object.fromEntries(fields.map((field) => [field.key, field.type === "checkbox" ? false : ""]));
+const previewColumns: Record<CropHealthTable, string[]> = {
+  disease_cases: ["crop", "location_label", "season_label", "expert_approval"],
+  sources: ["name", "source_date", "geographic_scope", "evidence_status"],
+  locations: ["county", "area", "agro_ecological_context", "evidence_status"],
+  seasons: ["county", "label", "period", "source_id"],
+  diseases: ["crop", "common_name", "scientific_name", "evidence_status"],
+  disease_symptoms: ["disease_id", "plant_part", "symptom", "weight"],
+  treatments: ["disease_id", "crop", "treatment_type", "evidence_status"],
+  agrovets: ["name", "county", "area", "evidence_status"],
+  outbreaks: ["disease_id", "county", "observed_period", "expert_approval"],
+};
 
-function formatEvidence(value: string): string {
-  try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
+export function AdminTables({ table }: { table: CropHealthTable }) {
+  const config = configs[table]; const query = useSearchParams(); const pageSize = 15;
+  const [data, setData] = useState<TableData | null>(null); const [search, setSearch] = useState(""); const [filterField, setFilterField] = useState(query.get("filter") ?? ""); const [filterValue, setFilterValue] = useState(query.get("value") ?? ""); const [page, setPage] = useState(1); const [form, setForm] = useState<Record<string, string | boolean>>(() => blanks(config.fields)); const [editing, setEditing] = useState<Record<string, unknown> | null>(null); const [message, setMessage] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [viewing, setViewing] = useState<Record<string, unknown> | null>(null);
+  const [formError, setFormError] = useState("");
+  const [reviewDecision, setReviewDecision] = useState("");
+  const [reviewNote, setReviewNote] = useState("");
+  const load = async () => { const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) }); if (search.trim()) params.set("search", search.trim()); if (filterField && filterValue) { params.set("filter_field", filterField); params.set("filter_value", filterValue); } const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/${table}?${params}`, { credentials: "include" }); if (!response.ok) throw new Error((await response.json()).detail || "Could not load records"); setData(await response.json()); };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- A new route represents a distinct database workspace.
+  useEffect(() => { setForm(blanks(config.fields)); setEditing(null); setMessage(""); setPage(1); }, [table, config]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Linked records intentionally set the page-local filter from the URL.
+  useEffect(() => { setFilterField(query.get("filter") ?? ""); setFilterValue(query.get("value") ?? ""); setPage(1); }, [query]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- The asynchronous request is the external system this effect synchronizes with.
+  useEffect(() => { load().catch((error: Error) => setMessage(error.message)); }, [table, page, search, filterField, filterValue]); // eslint-disable-line react-hooks/exhaustive-deps
+  const editable = config.fields.filter((field) => data?.editable_columns.includes(field.key)); const records = data?.records ?? []; const filterOptions = [...new Set(records.map((record) => String(record[filterField] ?? "")).filter(Boolean))].sort();
+  const shown = useMemo(() => previewColumns[table].map((key) => config.fields.find((field) => field.key === key) ?? { key, label: title(key) }), [config.fields, table]);
+  const read = (record: Record<string, unknown>, field: Field) => { const value = record[field.key]; if (field.reference && typeof value === "number") return data?.reference_options[field.key]?.find((option) => option.id === value)?.label ?? "Unknown linked record"; if (field.type === "checkbox") return Number(value) === 1 || value === true ? "Yes" : "No"; return String(value ?? "—"); };
+  const edit = (record: Record<string, unknown>) => { setViewing(null); setEditing(record); setFormError(""); setReviewDecision(""); setReviewNote(String(record.expert_review_note ?? "")); setForm(Object.fromEntries(editable.map((field) => [field.key, field.type === "checkbox" ? (Number(record[field.key]) === 1 || record[field.key] === true) : table === "disease_cases" && field.key === "expert_approval" && record[field.key] === "pending" ? "" : String(record[field.key] ?? "")]))) ; };
+  const closeEdit = () => { setEditing(null); setFormError(""); setForm(blanks(config.fields)); };
+  const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setFormError(""); const values = Object.fromEntries(editable.map((field) => [field.key, field.type === "checkbox" ? (form[field.key] ? 1 : 0) : field.optional && form[field.key] === "" ? null : form[field.key]])); const endpoint = editing ? `${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/${table}/${editing.id}` : `${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/${table}`; try { const response = await fetch(endpoint, { method: editing ? "PUT" : "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) { setFormError(payload.detail || "Could not save this record"); return; } setMessage(editing ? "Changes saved." : "Simulated record added."); closeEdit(); setPage(1); await load(); } catch { setFormError("Could not connect to the server. Please try again."); } };
+  const submitOutbreakReview = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!editing) return; setFormError(""); try { const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/outbreaks/${editing.id}/review`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: reviewDecision, comment: reviewNote }) }); const payload = await response.json().catch(() => ({})); if (!response.ok) { setFormError(payload.detail || "Could not save review"); return; } setMessage("Outbreak review saved."); closeEdit(); await load(); } catch { setFormError("Could not connect to the server. Please try again."); } };
+  const remove = async (record: Record<string, unknown>) => { if (!window.confirm("Delete this simulated record? This cannot be undone.")) return; const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/${table}/${record.id}`, { method: "DELETE", credentials: "include" }); if (!response.ok) { setMessage((await response.json()).detail || "Could not delete record"); return; } setMessage("Record deleted."); setPage(1); await load(); };
+  return <div className="space-y-6"><header><p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Information database</p><h1 className="mt-1 text-3xl font-semibold text-slate-950">{config.label}</h1><p className="mt-2 max-w-3xl text-slate-600">{config.description}</p></header>{!config.immutable && <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><button type="button" aria-expanded={formOpen} aria-controls="database-record-form" onClick={() => setFormOpen((open) => !open)} className="flex w-full items-center justify-between gap-4 text-left"><span className="text-xl font-semibold text-slate-950">{`Add ${config.label.toLowerCase().replace(/s$/, "")}`}</span><span aria-hidden="true" className="text-2xl font-light text-emerald-700">{formOpen ? "−" : "+"}</span></button>{formOpen && <form id="database-record-form" onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">{editable.map((field) => <FieldInput key={field.key} field={field} value={form[field.key]} options={data?.reference_options[field.key]} onChange={(value) => setForm((old) => ({ ...old, [field.key]: value }))} />)}{formError && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{formError}</p>}<div className="sm:col-span-2"><button className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">Add simulated record</button></div></form>}</section>}{message && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>}<section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 p-5"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-xl font-semibold text-slate-950">Records</h2><p className="mt-1 text-sm text-slate-500">Internal IDs are hidden. Linked names open their related database.</p></div><span className="text-sm text-slate-500">{data?.total ?? 0} records</span></div><div className="mt-4 flex flex-wrap gap-3"><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search this database" className="field min-w-56 flex-1 py-2" /><select value={filterField} onChange={(event) => { setFilterField(event.target.value); setFilterValue(""); setPage(1); }} className="field w-auto py-2"><option value="">No filter</option>{(config.filters ?? []).map((field) => <option key={field} value={field}>{title(field)}</option>)}</select>{filterField && <select value={filterValue} onChange={(event) => { setFilterValue(event.target.value); setPage(1); }} className="field w-auto py-2"><option value="">Choose value</option>{filterOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select>}</div></div><div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{shown.map((field) => <th key={field.key} className="px-4 py-3">{field.label}</th>)}<th className="px-4 py-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{records.map((record) => <tr key={String(record.id)}>{shown.map((field) => <td key={field.key} className="max-w-xs px-4 py-3 align-top text-slate-700"><span className="line-clamp-4">{field.reference ? <Link href={`/disease/admin/${field.reference}?filter=id&value=${record[field.key]}`} className="font-semibold text-emerald-700 underline">{read(record, field)}</Link> : read(record, field)}</span></td>)}<td className="whitespace-nowrap px-4 py-3 align-top"><button type="button" onClick={() => setViewing(record)} className="font-semibold text-emerald-700">View</button><button type="button" onClick={() => edit(record)} className="ml-3 font-semibold text-emerald-700">{config.immutable ? "Review" : "Edit"}</button>{!config.immutable && <button type="button" onClick={() => remove(record)} className="ml-3 font-semibold text-red-700">Delete</button>}</td></tr>)}{records.length === 0 && <tr><td colSpan={shown.length + 1} className="px-4 py-8 text-center text-slate-500">No records match this search or filter.</td></tr>}</tbody></table></div><div className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-sm"><span>Page {data?.page ?? 1} of {Math.max(1, Math.ceil((data?.total ?? 0) / pageSize))}</span><div className="flex gap-2"><button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="rounded-lg border border-slate-300 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">Previous</button><button disabled={!data || page * pageSize >= data.total} onClick={() => setPage((value) => value + 1)} className="rounded-lg border border-slate-300 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50">Next</button></div></div></section>{editing && <RecordModal title={config.immutable ? "Review disease case" : `Edit ${config.label.toLowerCase()}`} onClose={closeEdit}><p className="mb-5 text-sm text-slate-600">{config.immutable ? "Record an expert decision and note. Original case evidence stays unchanged." : "Update the fields below, then save your changes."}</p><form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">{editable.map((field) => <FieldInput key={field.key} idPrefix="edit" field={field} value={form[field.key]} options={data?.reference_options[field.key]} onChange={(value) => setForm((old) => ({ ...old, [field.key]: value }))} />)}{formError && <p role="alert" className="text-sm text-red-700 sm:col-span-2">{formError}</p>}<div className="flex gap-3 sm:col-span-2"><button className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">{config.immutable ? "Save review" : "Save changes"}</button><button type="button" onClick={closeEdit} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button></div></form>{table === "outbreaks" && Number(editing.llm_identified) === 1 && <form onSubmit={submitOutbreakReview} className="mt-7 space-y-4 border-t border-slate-200 pt-6"><h3 className="text-lg font-semibold text-slate-950">Expert review of AI observation</h3><p className="text-sm text-slate-600">This decision also updates the linked disease case.</p><label className="block text-sm font-semibold text-slate-800">Decision<select required value={reviewDecision} onChange={(event) => setReviewDecision(event.target.value)} className="field mt-1"><option value="">Choose a decision</option><option value="approved">Approve analysis</option><option value="rejected">Reject analysis</option></select></label><label className="block text-sm font-semibold text-slate-800">Expert review comment<textarea required value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} className="field mt-1 min-h-24" /></label>{formError && <p role="alert" className="text-sm text-red-700">{formError}</p>}<button className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">Save review</button></form>}</RecordModal>}{viewing && <RecordModal title={`${config.label} details`} onClose={() => setViewing(null)}><RecordDetails record={viewing} table={table} options={data?.reference_options ?? {}} /><div className="mt-6 flex gap-3 border-t border-slate-200 pt-5"><button type="button" onClick={() => edit(viewing)} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">{config.immutable ? "Review case" : "Edit record"}</button><button type="button" onClick={() => setViewing(null)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Close</button></div></RecordModal>}</div>;
 }
 
-export function AdminTables({ module }: { module: AdminModule }) {
-  const tables = tablesByModule[module];
-  const searchParams = useSearchParams();
-  const requestedTable = searchParams.get("table");
-  const selectedTable = tables.includes(requestedTable as TableName) ? requestedTable as TableName : tables[0];
-  const table = selectedTable;
-  const [data, setData] = useState<TableData | null>(null);
-  const [draft, setDraft] = useState("{}");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [message, setMessage] = useState("");
-  const [reviewingOutbreakId, setReviewingOutbreakId] = useState<number | null>(null);
-  const [reviewComment, setReviewComment] = useState("");
-  const [reviewingCaseId, setReviewingCaseId] = useState<number | null>(null);
-  const [caseReviewDecision, setCaseReviewDecision] = useState<"approved" | "rejected">("approved");
-  const [caseReviewComment, setCaseReviewComment] = useState("");
+function FieldInput({ field, value, options, onChange, idPrefix = "add" }: { field: Field; value: string | boolean | undefined; options?: Option[]; onChange: (value: string | boolean) => void; idPrefix?: string }) { const id = `${idPrefix}-${field.key}`; return <label htmlFor={id} className={field.type === "textarea" ? "sm:col-span-2" : ""}><span className="mb-1 block text-sm font-semibold text-slate-800">{field.label}</span>{field.type === "textarea" ? <textarea id={id} required={!field.optional} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className="field min-h-24" /> : field.type === "checkbox" ? <input id={id} type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} className="mt-2 size-5 accent-emerald-700" /> : field.type === "select" ? <select id={id} required={!field.optional} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className="field"><option value="">Choose one</option>{field.reference ? options?.map((option) => <option key={option.id} value={option.id}>{option.label}</option>) : field.options?.map((option) => <option key={option} value={option}>{title(option)}</option>)}</select> : <input id={id} required={!field.optional} type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"} step={field.type === "number" ? "any" : undefined} value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} className="field" />}</label>; }
 
-  const visibleKeys = data?.records[0] ? Object.keys(data.records[0]).filter((key) => !(table === "outbreaks" && key === "evidence_json")) : [];
-
-  async function load() {
-        const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/${module}/${table}`, { credentials: "include" });
-    if (!response.ok) throw new Error("Could not load the table");
-    setData(await response.json());
-  }
-
-  useEffect(() => {
-    let ignoreResponse = false;
-    fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/${module}/${table}`, { credentials: "include" })
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((payload) => { if (!ignoreResponse) setData(payload); })
-      .catch(() => { if (!ignoreResponse) setMessage("Could not connect to FastAPI."); });
-    return () => { ignoreResponse = true; };
-  }, [module, table]);
-
-  async function save() {
-    try {
-      const values = JSON.parse(draft);
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/${module}/${table}`, {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail || "Could not add record");
-      setMessage(`Added record ${payload.id}. Coordinates entered here are manually supplied demo data.`);
-      setDraft("{}");
-      await load();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid JSON"); }
-  }
-
-  function beginEdit(record: Record<string, unknown>) {
-    const { id, ...values } = record;
-    setEditingId(Number(id));
-    setDraft(JSON.stringify(Object.fromEntries(Object.entries(values).filter(([key]) => data?.editable_columns.includes(key))), null, 2));
-    window.scrollTo({ top: 300, behavior: "smooth" });
-  }
-
-  async function update() {
-    if (editingId === null) return;
-    try {
-      const values = JSON.parse(draft);
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/${module}/${table}/${editingId}`, {
-        method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail || "Could not update record");
-      setMessage(`Updated record ${editingId}.`);
-      setEditingId(null);
-      setDraft("{}");
-      await load();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid JSON"); }
-  }
-
-  async function remove(recordId: number) {
-    if (!window.confirm(`Delete ${table} record ${recordId}?`)) return;
-    const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/${module}/${table}/${recordId}`, { method: "DELETE", credentials: "include" });
-    if (!response.ok) {
-      const payload = await response.json();
-      setMessage(payload.detail || "Could not delete record");
-      return;
+function RecordDetails({ record, table, options }: { record: Record<string, unknown>; table: CropHealthTable; options: Record<string, Option[]> }) {
+  const entries = Object.entries(record).filter(([key]) => key !== "id" && (!key.endsWith("_id") || Boolean(options[key])));
+  return <dl className="grid gap-4 sm:grid-cols-2">{entries.map(([key, value]) => {
+    const linkedTable = configs[table].fields.find((field) => field.key === key)?.reference;
+    const linkedLabel = options[key]?.find((option) => option.id === value)?.label;
+    let formatted = String(value ?? "—");
+    if (key.endsWith("_json") && typeof value === "string") {
+      try { formatted = JSON.stringify(JSON.parse(value), null, 2); } catch { /* Show the supplied text when it is not valid JSON. */ }
     }
-    setMessage(`Deleted record ${recordId}.`);
-    await load();
-  }
-
-  async function reviewOutbreak(decision: "approved" | "rejected") {
-    if (reviewingOutbreakId === null) return;
-    if (!reviewComment.trim()) {
-      setMessage("Add an expert review comment before deciding.");
-      return;
-    }
-    const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/outbreaks/${reviewingOutbreakId}/review`, {
-      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, comment: reviewComment }),
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      setMessage(payload.detail || "Could not save the expert decision.");
-      return;
-    }
-    setMessage(`Outbreak review ${decision}.`);
-    setReviewingOutbreakId(null);
-    setReviewComment("");
-    await load();
-  }
-
-  async function reviewCase() {
-    if (reviewingCaseId === null) return;
-    if (!caseReviewComment.trim()) {
-      setMessage("Add an expert review note before deciding.");
-      return;
-    }
-    const response = await fetch(`${PUBLIC_API_BASE_URL}/api/v1/admin/${module}/disease_cases/${reviewingCaseId}`, {
-      method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ values: { expert_approval: caseReviewDecision, expert_review_note: caseReviewComment.trim() } }),
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      setMessage(payload.detail || "Could not save the expert review.");
-      return;
-    }
-    setMessage(`Case review ${caseReviewDecision}.`);
-    setReviewingCaseId(null);
-    setCaseReviewComment("");
-    await load();
-  }
-
-  return (
-    <div className="space-y-6">
-      {(table !== "disease_cases" || editingId !== null) && <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950">{editingId === null ? "Add to" : `Edit record ${editingId} in`} {table.replaceAll("_", " ")}</h2>
-        <p className="mt-1 text-sm text-slate-500">{tableDescriptions[table]}</p>
-        <p className="mt-2 text-sm text-slate-600">Editable fields: {data?.editable_columns.join(", ")}</p>
-        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} rows={7} spellCheck={false} className="field mt-4 font-mono text-sm" aria-label="New record values as JSON" />
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={editingId === null ? save : update} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">{editingId === null ? "Add simulated record" : "Save changes"}</button>
-          {editingId !== null && <button onClick={() => { setEditingId(null); setDraft("{}"); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>}
-        </div>
-      </section>}
-      {message && <p role="status" className="text-sm text-slate-700">{message}</p>}
-      {reviewingOutbreakId !== null && <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950">Review outbreak analysis #{reviewingOutbreakId}</h2>
-        <p className="mt-1 text-sm text-slate-600">Record an expert comment, then approve or reject this AI analysis.</p>
-        <textarea value={reviewComment} onChange={(event) => setReviewComment(event.target.value)} rows={4} className="field mt-4" placeholder="Explain the evidence supporting this decision." aria-label="Expert review comment" />
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={() => reviewOutbreak("approved")} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">Approve analysis</button>
-          <button onClick={() => reviewOutbreak("rejected")} className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white">Reject analysis</button>
-          <button onClick={() => { setReviewingOutbreakId(null); setReviewComment(""); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
-        </div>
-      </section>}
-      {reviewingCaseId !== null && <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950">Review disease case #{reviewingCaseId}</h2>
-        <p className="mt-1 text-sm text-slate-600">Record an expert note, then approve or reject this AI analysis.</p>
-        <label className="mt-4 block text-sm font-semibold text-slate-800" htmlFor="case-review-decision">Review decision</label>
-        <select id="case-review-decision" value={caseReviewDecision} onChange={(event) => setCaseReviewDecision(event.target.value as "approved" | "rejected")} className="field mt-1">
-          <option value="approved">Approve analysis</option>
-          <option value="rejected">Reject analysis</option>
-        </select>
-        <textarea value={caseReviewComment} onChange={(event) => setCaseReviewComment(event.target.value)} rows={4} className="field mt-4" placeholder="Explain the evidence supporting this decision." aria-label="Expert review note" />
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={reviewCase} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white">Save review</button>
-          <button onClick={() => { setReviewingCaseId(null); setCaseReviewComment(""); }} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
-        </div>
-      </section>}
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 p-5"><h2 className="text-xl font-semibold text-slate-950">Current records</h2><p className="mt-1 text-sm text-slate-500">{tableDescriptions[table]}</p><p className="mt-2 text-sm text-slate-500">Open evidence details to inspect the full record. Case history preserves the original findings; only review status and notes are editable.</p></div>
-        <div className="overflow-x-auto">
-          {data?.records.length === 0 && <p className="p-5 text-sm text-slate-600">{table === "disease_cases" ? "No records yet. Submit an observation with Save for expert review selected to create case history." : "No records yet. Add a simulated record above."}</p>}
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{visibleKeys.map((key) => <th key={key} className="px-4 py-3">{key.replaceAll("_", " ")}</th>)}<th className="px-4 py-3">Actions</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{data?.records.map((record) => <tr key={String(record.id)}>{visibleKeys.map((key) => {
-              const value = record[key];
-              if (key === "expert_review_note" && table === "disease_cases" && !value) return <td key={key} className="max-w-xs px-4 py-3 align-top text-slate-500"><span className="italic">Not reviewed yet</span></td>;
-              if (key === "expert_approval" && table === "outbreaks" && record.llm_identified === 1) return <td key={key} className="max-w-xs px-4 py-3 align-top text-slate-700"><span className="block capitalize">{String(value)}</span><button onClick={() => { setReviewingOutbreakId(Number(record.id)); setReviewComment(String(record.expert_review_note ?? "")); }} className="mt-2 font-semibold text-emerald-700">Approve / reject</button></td>;
-              if (key === "image_path" && value && table === "outbreaks") return <td key={key} className="max-w-xs px-4 py-3 align-top text-slate-700"><a className="font-semibold text-emerald-700 underline" href={`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/outbreaks/${record.id}/image`} target="_blank" rel="noreferrer">Open photo</a><span className="mt-2 block break-all text-xs text-slate-500">{String(value)}</span></td>;
-              if (key.endsWith("_json") && typeof value === "string") return <td key={key} className="max-w-xs px-4 py-3 align-top text-slate-700"><details><summary className="cursor-pointer font-semibold text-emerald-700">View {key.replaceAll("_", " ").replace(" json", "")}</summary><pre className="mt-2 max-h-96 min-w-72 overflow-auto whitespace-pre-wrap break-words text-xs">{formatEvidence(value)}</pre></details></td>;
-              return <td key={key} className="max-w-xs px-4 py-3 align-top text-slate-700"><span className="line-clamp-4">{String(value ?? "—")}</span></td>;
-            })}<td className="whitespace-nowrap px-4 py-3 align-top"><button onClick={() => beginEdit(record)} className="font-semibold text-emerald-700">Edit</button>{table === "disease_cases" && <button onClick={() => { setReviewingCaseId(Number(record.id)); setCaseReviewDecision(record.expert_approval === "rejected" ? "rejected" : "approved"); setCaseReviewComment(String(record.expert_review_note ?? "")); }} className="ml-3 font-semibold text-emerald-700 underline">Review case</button>}{table !== "disease_cases" && <button onClick={() => remove(Number(record.id))} className="ml-3 font-semibold text-red-700">Delete</button>}</td></tr>)}</tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
+    return <div key={key} className={key.endsWith("_json") || formatted.length > 140 ? "min-w-0 sm:col-span-2" : "min-w-0"}>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title(key.replace(/_id$/, "").replace(/_json$/, ""))}</dt>
+      <dd className="mt-1 break-words text-sm leading-6 text-slate-800">
+        {key === "image_path" && value && (table === "disease_cases" || table === "outbreaks")
+          ? <a href={`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/${table}/${record.id}/image`} target="_blank" rel="noreferrer" className="font-semibold text-emerald-700 underline">Open photo</a>
+          : linkedTable && linkedLabel
+            ? <Link href={`/disease/admin/${linkedTable}?filter=id&value=${value}`} className="font-semibold text-emerald-700 underline">{linkedLabel}</Link>
+            : key.endsWith("_json") && value
+              ? <pre className="max-h-72 overflow-auto rounded-xl bg-slate-50 p-3 font-mono text-xs whitespace-pre-wrap">{formatted}</pre>
+              : formatted}
+      </dd>
+    </div>;
+  })}</dl>;
 }
