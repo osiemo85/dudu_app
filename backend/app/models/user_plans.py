@@ -91,3 +91,14 @@ class PlanNote(NoteCreate):
 
 class SavedPlanDetail(SavedPlan):
     notes: list[PlanNote]
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+    @field_validator('name')
+    @classmethod
+    def valid_name(cls, value: str) -> str:
+        value = ' '.join(value.split())
+        if not value: raise ValueError('Enter your name')
+        return value

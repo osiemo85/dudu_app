@@ -92,7 +92,10 @@ returns area-matched directory entries with a treatment/service label, indicativ
 and phone number. The records are simulated: they do not confirm business details,
 distance, stock, current price, product approval, or treatment suitability.
 
-The frontend reads `NEXT_PUBLIC_BACKEND_URL` from `frontend/.env.local` (default: `http://localhost:8000`). Configure `FRONTEND_URL` in the backend environment with the allowed browser origin. Set this in Vercel for deployed environments; the backend deliberately has no URL fallback.
+The frontend reads the server-only `BACKEND_URL` from `frontend/.env.local` and
+proxies browser `/api/v1/*` requests to it. Configure `FRONTEND_URL` in the
+backend environment with the allowed browser origin. Set these in the respective
+deployment environments; the backend deliberately has no URL fallback.
 
 The planting API is currently not registered. Existing planting records are kept
 in the database without being exposed by the application.
@@ -199,3 +202,14 @@ weather. Sample timings and seed, compost and fertilizer quantities are
 fictional interface data, not usable application rates. Do not apply them.
 Saved plans are snapshots; save a plan again to capture changed source data or
 weather. Existing saved snapshots and notes remain unchanged.
+
+
+## Duducare additions
+
+`POST /api/v1/chat` uses typed, bounded scripted guidance from
+`data/chat_guidance.json`; no third-party chat integration is implied.
+`POST /api/v1/planting/demo-recommend` runs existing local rules without an API
+key. Agent ranking remains on `/api/v1/planting/recommend`. Both location/season
+option endpoints are reachable. `/api/v1/saved-plans` exposes the existing
+ownership-checked snapshot and note services and uses no-store responses.
+See the root README for isolated SQLite setup and sample inputs for both modules.

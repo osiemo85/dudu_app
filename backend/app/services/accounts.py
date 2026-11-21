@@ -89,3 +89,10 @@ def logout(request: Request, response: Response) -> None:
         with database() as connection:
             connection.execute('DELETE FROM user_sessions WHERE token_hash=?', (_token_hash(token),))
     response.delete_cookie(COOKIE_NAME, path='/', httponly=True, samesite='lax', secure=request.url.scheme == 'https')
+
+
+def update_profile(user_id: int, name: str) -> Account:
+    with database() as connection:
+        connection.execute('UPDATE users SET name=? WHERE id=?', (name, user_id))
+        row=connection.execute('SELECT id,name,email,role FROM users WHERE id=?', (user_id,)).fetchone()
+    return Account(**dict(row))

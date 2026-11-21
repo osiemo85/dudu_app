@@ -72,6 +72,7 @@ name TEXT NOT NULL, timing_notes TEXT, guidance TEXT, source_id BIGINT REFERENCE
     emit_file("management_enrichment.sql")
     emit_file("management_input_examples.sql")
     emit_file("user_plans.sql")
+    emit_file("animal_cases.sql")
     emit("ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''")
     emit("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'")
     emit("""DO $$ DECLARE item record; BEGIN FOR item IN SELECT table_name FROM information_schema.columns

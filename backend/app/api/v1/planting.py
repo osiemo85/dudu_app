@@ -5,6 +5,7 @@ from app.models.disease import LocationOption, SeasonOption
 from app.models.planting import CropDetailsResponse, CropOption, PlantingRequest, PlantingResponse
 from app.services.planting_agent import recommend_with_agent
 from app.services.planting_details import crop_details
+from app.services.planting_engine import recommend_planting
 
 router = APIRouter(prefix="/planting", tags=["planting advice"])
 
@@ -32,3 +33,9 @@ async def recommend(request: PlantingRequest) -> PlantingResponse:
 @router.get("/crops/{crop_id}/details", response_model=CropDetailsResponse)
 def details(crop_id: int, county: str, area: str, season: str) -> CropDetailsResponse:
     return crop_details(crop_id, county, area, season)
+
+
+@router.post("/demo-recommend", response_model=PlantingResponse)
+def demo_recommend(request: PlantingRequest) -> PlantingResponse:
+    """Explicit local rule-based demo; never presents itself as agent analysis."""
+    return recommend_planting(request)

@@ -1,0 +1,76 @@
+{
+  "source": {
+    "name": "Duducare animal-health demonstration fixtures",
+    "date": "2026-11-21",
+    "geographic_scope": "General livestock demo; no local outbreak surveillance",
+    "evidence_status": "simulated",
+    "limitations": "Illustrative symptom groups, not veterinarian-validated diagnoses or treatment rules."
+  },
+  "species": [
+    "cattle",
+    "goat",
+    "sheep",
+    "chicken"
+  ],
+  "groups": [
+    {
+      "id": "respiratory",
+      "species": [
+        "cattle",
+        "goat",
+        "sheep",
+        "chicken"
+      ],
+      "symptoms": [
+        "cough",
+        "nasal_discharge"
+      ],
+      "en": "Respiratory illness or irritation",
+      "sw": "Ugonjwa au muwasho wa mfumo wa kupumua"
+    },
+    {
+      "id": "digestive",
+      "species": [
+        "cattle",
+        "goat",
+        "sheep",
+        "chicken"
+      ],
+      "symptoms": [
+        "diarrhoea",
+        "poor_appetite"
+      ],
+      "en": "Digestive illness, parasites, or a feeding problem",
+      "sw": "Tatizo la mmeng’enyo, vimelea, au lishe"
+    },
+    {
+      "id": "skin",
+      "species": [
+        "cattle",
+        "goat",
+        "sheep",
+        "chicken"
+      ],
+      "symptoms": [
+        "itching",
+        "skin_lesions"
+      ],
+      "en": "Skin disease, external parasites, or injury",
+      "sw": "Ugonjwa wa ngozi, vimelea vya nje, au jeraha"
+    },
+    {
+      "id": "udder",
+      "species": [
+        "cattle",
+        "goat",
+        "sheep"
+      ],
+      "symptoms": [
+        "udder_swelling",
+        "milk_change"
+      ],
+      "en": "Udder inflammation, including possible mastitis",
+      "sw": "Uvimbe wa kiwele, ikiwemo uwezekano wa mastitisi"
+    }
+  ]
+}
