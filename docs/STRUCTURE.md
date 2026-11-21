@@ -125,3 +125,31 @@ API. `frontend/app/planting/plans/page.tsx` provides the farmer's saved plans.
 fixtures. `management_plans`, `management_stages`, `stage_inputs`, `inputs` and
 `stage_treatments` are editable in the planting admin; `PlanContent.tsx` renders
 both the plan preview and the saved snapshot.
+
+
+## Duducare interface and PWA
+
+- `frontend/components/DashboardShell.tsx`: shared responsive navigation and account access.
+- `frontend/components/ContextFields.tsx`: explicitly selected area/season for planting and chat.
+- `frontend/components/PlantingForm.tsx`, `CropPlanPreview.tsx`, `SavedPlans.tsx`: restored independent local planting demo, plan stages and account snapshots.
+- `frontend/components/FarmChat.tsx`: tab-only, single-question scripted assistant with context and provenance.
+- `backend/app/models/chat.py`, `services/farm_chat.py`, `api/v1/chat.py`: typed chat contract, local decisions and thin route.
+- `data/chat_guidance.json`: editable scripted examples and their provenance.
+- `frontend/components/FarmNotebook.tsx`: browser-local plot observations, search and JSON export; no GPS or shared farm messaging.
+- `frontend/app/manifest.ts`, `public/sw.js`, `public/offline.html`: install metadata, public-only offline fallback, and brand icons. The full app is not cached offline.
+
+## Animal health and account/language additions
+
+- `/health`: shared crop/animal module selector; `/animal-health` assessment and
+  `/animal-health/cases` private saved observations.
+- `models/animal_health.py`, `services/animal_health.py`, `api/v1/animal_health.py`:
+  typed contract, service decisions, and authenticated case endpoints.
+- `data/animal_health.json`: simulated species/symptom records with provenance;
+  `data/animal_cases.sql`: private case schema. SQLite initialization is additive;
+  PostgreSQL uses explicit migration `20261121_01` or exported manual seed.
+- `components/LanguageProvider.tsx`, `lib/sw.json`: React-based authored interface
+  translations and persistent device language, without DOM text rewriting.
+- `components/AccountMenu.tsx`: anchored native account popover, avatar-only
+  trigger, profile/settings navigation and logout.
+- `/profile` and `components/ProfilePage.tsx`: authenticated account editing.
+  `/proflile` redirects to `/profile`; `/settings` exposes device language settings.

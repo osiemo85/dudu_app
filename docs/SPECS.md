@@ -207,3 +207,76 @@ rainfall distribution. Fixture timings and quantities are fictional test values
 and must not be presented as field recommendations. Pesticide product instructions
 and rates are not exposed without a verified, applicable source; the demo currently
 excludes them. Saved snapshots retain the details available when saved.
+
+
+## 11. Duducare navigation, farm assistant and PWA
+
+The farmer interface is branded Duducare and follows the root `index.html`
+reference: cream surfaces, forest green and harvest accents, compact cards,
+five labeled mobile tabs and an adaptive laptop sidebar. Disease and planting
+remain independently reachable without login. Personal histories still require
+an authenticated account; admin operations retain their server-side role checks.
+
+The farm chat is a **scripted demo assistant**, not a live model, expert, or
+farmer messaging service. It uses editable local replies, asks for missing
+location/season before discussing local planting, redirects diagnostic and
+chemical questions safely, and returns the shared provenance/uncertainty fields.
+It sends only the current question and selected area/season; it stores no chat
+history on the server or browser. Earlier messages are visual conversation
+history only and are not analysed. Leaving the page resets them.
+
+My farm adds browser-local, labeled farmer observations by plot name, with
+category, timestamp, search, export and confirmed deletion. It collects no GPS;
+local notes are neither verified evidence nor synced records. Signed-in farmers
+can also save growing-plan snapshots and notes through existing owned services.
+
+The installable PWA registers its service worker in production on supported
+secure origins. Only the offline explanation and brand icons are cached. Private
+pages, API responses and uploaded evidence are never cached by the service worker.
+Offline navigations display an explicit reconnect response; requests are not
+silently queued, and no offline advice is generated.
+
+The planting screen exposes an explicitly labeled rule-based local demo service
+at `/api/v1/planting/demo-recommend`. The existing opt-in agent endpoint remains
+separate and continues requiring a configured server-side API key.
+
+## 12. Animal health, profile and language
+
+Health is a shared entry point with independently usable crop and animal flows.
+Animal health covers cattle, goats, sheep and chickens using editable simulated
+symptom groups in `data/animal_health.json`. Warning signs trigger a veterinarian
+referral message before species or symptom matching. This is a conservative demo
+screen, not a clinically validated triage protocol; no warning selection must
+never be presented as assurance of safety. No drugs, doses, vaccine schedules or
+withdrawal periods are generated. The symptom categories require veterinarian
+review before operational use. County and area are manually supplied; no precise
+GPS is collected and no season-dependent animal advice is given.
+
+The form collects species, group name, age group, structured signs, duration,
+affected/total counts and optional veterinary history. Free text is retained as
+farmer observations, not interpreted as diagnostic evidence. Photos are previewed
+locally only and are not uploaded, analysed or persisted. Photo-only or missing
+structured inputs produce clarification. Results contain shared context,
+confidence, sources, limitations, next actions and a veterinarian review route.
+Referral means a recommended action, not an appointment or message actually sent.
+
+Saving requires a signed-in account and explicit storage consent. Animal cases
+store the observation and result, with ownership checked for list and detail
+access. Account name changes use authenticated, origin-checked PATCH /auth/me;
+email and role cannot be changed through the profile form. A circle-only avatar
+in the sidebar footer opens a compact, anchored account menu with the account
+name at the top and Profile, Settings and Log out actions. The sidebar has no
+promotional slogan or account-name strip. Profile links to `/profile` for account
+editing; Settings links to `/settings` for device preferences. `/proflile` redirects
+to `/profile`. The header provides the same avatar on mobile. Escape and outside
+clicks dismiss the menu. Guests can change language on Settings; Profile prompts
+for login when signed out.
+Health uses two compact linked rows for the independent crop and animal flows,
+with a visible simulated-evidence note.
+
+English/Kiswahili is a device preference available before and after login. It
+persists across navigation, reload and logout, and updates the document language.
+Navigation, authentication controls, core form labels and animal intake/results
+have authored translations. Existing agricultural evidence, stored case snapshots
+and some older output text retain their original language, explicitly disclosed
+in the Swahili interface. User-entered observations are never machine-translated.
