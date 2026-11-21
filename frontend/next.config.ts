@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
-const backendUrl = process.env.BACKEND_URL?.trim().replace(/\/$/, "")
-  || process.env.NEXT_PUBLIC_BACKEND_URL?.trim().replace(/\/$/, "");
+const backendUrl = process.env.BACKEND_URL?.trim().replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
   /* config options here */

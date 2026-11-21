@@ -1,5 +1,8 @@
 "use client";
 
+import { T } from "@/components/LanguageProvider";
+
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
 import type { DiseaseResponse, LocationOption, SeasonOption } from "@/lib/types";
@@ -31,7 +34,7 @@ async function responseError(response: Response): Promise<string> {
 }
 
 export function DiseaseForm() {
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(true);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [seasons, setSeasons] = useState<SeasonOption[]>([]);
   const [county, setCounty] = useState("");
@@ -173,79 +176,77 @@ export function DiseaseForm() {
         <form onSubmit={submit} aria-busy={loading} className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex items-start justify-between gap-4">
             <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">1 · Crop observation</p>
-          <h2 className="mt-2 text-2xl font-semibold text-emerald-950">What do you see?</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700"><T>1 · Crop observation</T></p>
+          <h2 className="mt-2 text-2xl font-semibold text-emerald-950"><T>What do you see?</T></h2>
             </div>
-            <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Close form</button>
+            <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><T>Close form</T></button>
         </div>
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-800">Crop <span className="text-red-700">(required)</span>
+          <label className="text-sm font-semibold text-slate-800"><T>Crop</T><span className="text-red-700"><T>(required)</T></span>
             <select name="crop" required aria-invalid={Boolean(validationErrors.crop)} aria-describedby={validationErrors.crop ? "crop-error" : undefined} className={`field mt-2 ${validationErrors.crop ? "border-red-500 bg-red-50" : ""}`} defaultValue="" onChange={() => clearValidationError("crop")}>
-              <option value="">Choose crop</option>{crops.map((crop) => <option key={crop}>{crop}</option>)}
+              <option value=""><T>Choose crop</T></option>{crops.map((crop) => <option key={crop}>{crop}</option>)}
             </select>
           </label>
-          <label className="text-sm font-semibold text-slate-800">Growth stage
-            <select name="growth_stage" className="field mt-2" defaultValue="">
-              <option value="">Not sure</option><option>Seedling</option><option>Vegetative</option><option>Flowering</option><option>Fruiting / grain filling</option><option>Mature</option>
+          <label className="text-sm font-semibold text-slate-800"><T>Growth stage</T><select name="growth_stage" className="field mt-2" defaultValue="">
+              <option value=""><T>Not sure</T></option><option value="Seedling"><T>Seedling</T></option><option value="Vegetative"><T>Vegetative</T></option><option value="Flowering"><T>Flowering</T></option><option value="Fruiting / grain filling"><T>Fruiting / grain filling</T></option><option value="Mature"><T>Mature</T></option>
             </select>
           </label>
         </div>
         {validationErrors.crop && <p id="crop-error" role="alert" className="mt-2 text-sm font-semibold text-red-700">{validationErrors.crop}</p>}
-        <label className="mt-5 block text-sm font-semibold text-slate-800">Symptoms <span className="font-normal text-slate-500">(or add a photo below)</span>
-          <textarea name="symptoms" rows={4} aria-invalid={Boolean(validationErrors.observation)} aria-describedby={validationErrors.observation ? "observation-error" : undefined} onChange={() => clearValidationError("observation")} className={`field mt-2 ${validationErrors.observation ? "border-red-500 bg-red-50" : ""}`} placeholder="Example: Brown spots with rings on lower leaves; some leaves are yellowing." />
+        <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Symptoms</T><span className="font-normal text-slate-500"><T>(or add a photo below)</T></span>
+          <textarea name="symptoms" rows={3} aria-invalid={Boolean(validationErrors.observation)} aria-describedby={validationErrors.observation ? "observation-error" : undefined} onChange={() => clearValidationError("observation")} className={`field mt-2 ${validationErrors.observation ? "border-red-500 bg-red-50" : ""}`} placeholder="Example: Brown spots with rings on lower leaves; some leaves are yellowing." />
         </label>
+        <details className="mt-5 rounded-xl border border-slate-200 px-4 py-1"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-emerald-900"><T>Add affected part and spread pattern (optional)</T></summary>
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-800">Affected part
-            <input name="affected_part" className="field mt-2" placeholder="Leaf, stem, fruit…" />
+          <label className="text-sm font-semibold text-slate-800"><T>Affected part</T><input name="affected_part" className="field mt-2" placeholder="Leaf, stem, fruit…" />
           </label>
-          <label className="text-sm font-semibold text-slate-800">Spread pattern
-            <input name="spread_pattern" className="field mt-2" placeholder="One plant, one row, rapid…" />
+          <label className="text-sm font-semibold text-slate-800"><T>Spread pattern</T><input name="spread_pattern" className="field mt-2" placeholder="One plant, one row, rapid…" />
           </label>
         </div>
-        <label className="mt-5 block text-sm font-semibold text-slate-800">Crop photo <span className="font-normal text-slate-500">(or describe symptoms above)</span>
+        </details>
+        <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Crop photo</T><span className="font-normal text-slate-500"><T>(or describe symptoms above)</T></span>
           <input name="image" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-invalid={Boolean(validationErrors.observation)} aria-describedby={validationErrors.observation ? "observation-error" : undefined} onChange={(event) => { setImageName(event.target.files?.[0]?.name ?? ""); clearValidationError("observation"); }} className={`mt-2 block w-full rounded-xl border border-dashed bg-emerald-50 p-4 text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-700 file:px-4 file:py-2 file:font-semibold file:text-white ${validationErrors.observation ? "border-red-500 bg-red-50" : "border-emerald-300"}`} />
-          <span className="mt-2 block text-xs font-normal text-slate-500">Use a clear, close photo. When OpenAI is configured, your photo and observations are sent to OpenAI for analysis. The app saves them locally only if you select expert review below.</span>
-          {imageName && <span className="mt-2 block text-xs font-semibold text-emerald-800">Photo ready: {imageName}</span>}
+          <span className="mt-2 block text-xs font-normal text-slate-500"><T>Use a clear, close photo. When OpenAI is configured, your photo and observations are sent to OpenAI for analysis. The app saves them locally only if you select expert review below.</T></span>
+          {imageName && <span className="mt-2 block text-xs font-semibold text-emerald-800"><T>Photo ready:</T>{imageName}</span>}
           {validationErrors.observation && <span id="observation-error" role="alert" className="mt-2 block text-sm font-semibold text-red-700">{validationErrors.observation}</span>}
         </label>
 
         <div className="my-7 border-t border-slate-100" />
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">2 · Local context</p>
-        <h2 className="mt-2 text-2xl font-semibold text-emerald-950">Where and when?</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700"><T>2 · Local context</T></p>
+        <h2 className="mt-2 text-2xl font-semibold text-emerald-950"><T>Where and when?</T></h2>
         <div className="mt-5 rounded-2xl bg-emerald-50 p-4">
-          <p className="text-sm leading-6 text-emerald-950">Use your location to match local demo records. It is saved locally only if you select expert review below.</p>
-          <button type="button" onClick={requestLocation} className="mt-3 rounded-full border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">Use my location</button>
+          <p className="text-sm leading-6 text-emerald-950"><T>Use your location to match local demo records. It is saved locally only if you select expert review below.</T></p>
+          <button type="button" onClick={requestLocation} className="mt-3 rounded-full border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"><T>Use my location</T></button>
           {locationMessage && <p className="mt-3 text-xs leading-5 text-emerald-800">{locationMessage}</p>}
         </div>
-        <p className="my-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">or select manually</p>
+        <p className="my-4 text-center text-xs font-semibold uppercase tracking-wide text-slate-400"><T>or select manually</T></p>
         <div className="grid gap-5 sm:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-800">County <span className="text-red-700">(required unless location is used)</span>
+          <label className="text-sm font-semibold text-slate-800"><T>County</T><span className="text-red-700"><T>(required unless location is used)</T></span>
             <select name="county" value={county} aria-invalid={Boolean(validationErrors.location)} aria-describedby={validationErrors.location ? "location-error" : undefined} onChange={(event) => { setCounty(event.target.value); setArea(""); setSeasons([]); setCoordinates(null); clearValidationError("location"); }} className={`field mt-2 ${validationErrors.location ? "border-red-500 bg-red-50" : ""}`}>
-              <option value="">Choose county</option>{counties.map((item) => <option key={item}>{item}</option>)}
+              <option value=""><T>Choose county</T></option>{counties.map((item) => <option key={item}>{item}</option>)}
             </select>
           </label>
-          <label className="text-sm font-semibold text-slate-800">Area
-            <select name="area" value={area} onChange={(event) => setArea(event.target.value)} className="field mt-2" disabled={!county}>
-              <option value="">Choose area</option>{areas.map((item) => <option key={item.area}>{item.area}</option>)}
+          <label className="text-sm font-semibold text-slate-800"><T>Area</T><select name="area" value={area} onChange={(event) => setArea(event.target.value)} className="field mt-2" disabled={!county}>
+              <option value=""><T>Choose area</T></option>{areas.map((item) => <option key={item.area}>{item.area}</option>)}
             </select>
           </label>
         </div>
         {validationErrors.location && <p id="location-error" role="alert" className="mt-2 text-sm font-semibold text-red-700">{validationErrors.location}</p>}
-        <label className="mt-5 block text-sm font-semibold text-slate-800">Season / observation period <span className="text-red-700">(required)</span>
+        <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Season / observation period</T><span className="text-red-700"><T>(required)</T></span>
           <select name="season" aria-invalid={Boolean(validationErrors.season)} aria-describedby={validationErrors.season ? "season-error" : undefined} onChange={() => clearValidationError("season")} className={`field mt-2 ${validationErrors.season ? "border-red-500 bg-red-50" : ""}`} defaultValue="">
-            <option value="">Choose local season</option>{displayedSeasons.map((item) => <option key={item.label} value={item.label}>{item.label} · {item.period}</option>)}
-            <option value="Dry period">Dry period / outside listed season</option>
+            <option value=""><T>Choose local season</T></option>{displayedSeasons.map((item) => <option key={item.label} value={item.label}>{item.label} · {item.period}</option>)}
+            <option value="Dry period"><T>Dry period / outside listed season</T></option>
           </select>
         </label>
         {validationErrors.season && <p id="season-error" role="alert" className="mt-2 text-sm font-semibold text-red-700">{validationErrors.season}</p>}
         <label className="mt-5 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
           <input name="save_for_expert_review" type="checkbox" className="mt-1 size-4 accent-emerald-700" />
-          <span><span className="font-semibold">Save for expert review.</span> Store this observation, photo, any coordinates I supplied, AI findings, and agent run history locally for admins and officers. It stays unverified until an expert approves or rejects it.</span>
+          <span><span className="font-semibold"><T>Save for expert review.</T></span><T>Store this observation, photo, any coordinates I supplied, AI findings, and agent run history locally for admins and officers. It stays unverified until an expert approves or rejects it.</T></span>
         </label>
         {error && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-        {Object.keys(validationErrors).length > 0 && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">Complete the highlighted required fields before checking possible causes.</p>}
+        {Object.keys(validationErrors).length > 0 && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800"><T>Complete the highlighted required fields before checking possible causes.</T></p>}
         <button disabled={loading} className="mt-7 w-full rounded-2xl bg-emerald-700 px-5 py-3.5 font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60">
-          {loading ? <span className="flex items-center justify-center gap-3"><span aria-hidden="true" className="size-5 animate-spin rounded-full border-2 border-white/40 border-t-white" />Checking the demo evidence…</span> : "Find possible causes"}
+          {loading ? <span className="flex items-center justify-center gap-3"><span aria-hidden="true" className="size-5 animate-spin rounded-full border-2 border-white/40 border-t-white" /><T>Checking the demo evidence…</T></span> : "Find possible causes"}
         </button>
         </form>
       ) : (
@@ -254,22 +255,20 @@ export function DiseaseForm() {
           onClick={() => setIsFormOpen(true)}
           aria-expanded="false"
           className="rounded-2xl bg-emerald-700 px-6 py-3.5 font-semibold text-white shadow-sm transition hover:bg-emerald-800"
-        >
-          Find Disease
-        </button>
+        ><T>Find Disease</T></button>
       )}
 
       <div ref={resultPanelRef} tabIndex={-1} className="scroll-mt-5 outline-none">{loading ? (
         <section aria-live="polite" aria-busy="true" className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-8 text-center">
           <span aria-hidden="true" className="mx-auto block size-12 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-700" />
-          <h2 className="mt-5 text-2xl font-semibold text-emerald-950">Reviewing your observation</h2>
-          <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600">Checking matching demo records and local context.</p>
+          <h2 className="mt-5 text-2xl font-semibold text-emerald-950"><T>Reviewing your observation</T></h2>
+          <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600"><T>Checking matching demo records and local context.</T></p>
         </section>
       ) : result ? <DiseaseResult result={result} /> : isFormOpen ? (
         <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/50 p-8 text-center">
-          <span className="text-5xl" aria-hidden="true">🔎</span>
-          <h2 className="mt-4 text-2xl font-semibold text-emerald-950">Your possible matches will appear here</h2>
-          <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600">Possible causes, evidence, and next steps will show here.</p>
+          <span className="demo-tag"><T>SIMULATED EVIDENCE</T></span>
+          <h2 className="mt-4 text-2xl font-semibold text-emerald-950"><T>Your possible matches will appear here</T></h2>
+          <p className="mx-auto mt-3 max-w-md leading-7 text-slate-600"><T>Possible causes, evidence, and next steps will show here.</T></p>
         </div>
       ) : null}</div>
     </div>

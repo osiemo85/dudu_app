@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/components/LanguageProvider";
+
 
 import { useState } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
@@ -110,13 +112,13 @@ export function DiseaseResult({ result }: { result: DiseaseResponse }) {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <article className="rounded-3xl border border-slate-200 bg-white p-6">
-          <h3 className="text-xl font-semibold text-slate-950">Safe next steps</h3>
+          <h3 className="text-xl font-semibold text-slate-950"><T>Safe next steps</T></h3>
           <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
             {result.next_actions.map((action, index) => <li key={action} className="flex gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-800">{index + 1}</span><span>{action}</span></li>)}
           </ol>
         </article>
         <article className="rounded-3xl border border-slate-200 bg-white p-6">
-          <h3 className="text-xl font-semibold text-slate-950">Treatment context</h3>
+          <h3 className="text-xl font-semibold text-slate-950"><T>Treatment context</T></h3>
           {result.treatment_options.length ? result.treatment_options.map((option) => (
             <div key={`${option.disease}-${option.action}`} className="mt-4 border-t border-slate-100 pt-4 first:mt-3 first:border-0 first:pt-0">
               <div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-800">{option.disease}</p><EvidenceBadge status={option.evidence_status} /></div>
@@ -157,7 +159,7 @@ export function DiseaseResult({ result }: { result: DiseaseResponse }) {
       </article>}
 
       <article className="rounded-3xl border border-slate-200 bg-white p-6">
-        <h3 className="text-xl font-semibold text-slate-950">Area history</h3>
+        <h3 className="text-xl font-semibold text-slate-950"><T>Area history</T></h3>
         {result.outbreak_context.length ? result.outbreak_context.map((record) => (
           <div key={`${record.disease}-${record.observed_period}`} className="mt-4 rounded-2xl bg-amber-50 p-4">
             <div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-amber-950">{record.disease} · {record.area}</p><EvidenceBadge status={record.evidence_status} /></div>
@@ -168,7 +170,7 @@ export function DiseaseResult({ result }: { result: DiseaseResponse }) {
       </article>
 
       <article className="rounded-3xl border border-slate-200 bg-white p-6">
-        <h3 className="text-xl font-semibold text-slate-950">Evidence used</h3>
+        <h3 className="text-xl font-semibold text-slate-950"><T>Evidence used</T></h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {result.sources.map((source) => (
             <div key={`${source.name}-${source.date}`} className="rounded-2xl bg-slate-50 p-4 text-sm">
