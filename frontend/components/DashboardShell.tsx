@@ -14,7 +14,7 @@ import { useUnreadMessages } from "./MessagingProvider";
 const links: { href: string; label: string; icon: IconName }[] = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/planting", label: "Planting", icon: "plant" },
-  { href: "/health", label: "Health", icon: "scan" },
+  { href: "/health", label: "Health Check", icon: "scan" },
   { href: "/chat", label: "Farm chat", icon: "chat" },
   { href: "/farms", label: "My farm", icon: "farm" },
 ];

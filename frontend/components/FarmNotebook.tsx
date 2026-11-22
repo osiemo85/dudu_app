@@ -215,10 +215,7 @@ export function FarmNotebook() {
         </section>
       </div>
       <div className="panel mt-5">
-        <h2><T>Keep your plans and crop cases close.</T></h2><Link className="button button-secondary my-3" href="/animal-health/cases"><T>Animal case history</T></Link>
-        <p className="page-description"><T>Sign in to see the cases you chose to save for expert review.</T></p>
-        <Link className="button button-secondary mt-4" href="/disease/cases"><T>My crop health cases</T><Icon name="arrow" size={16} />
-        </Link>
+        <h2><T>Keep your plans close.</T></h2>
         <Link
           className="button button-secondary mt-4 ml-2"
           href="/planting/plans"
