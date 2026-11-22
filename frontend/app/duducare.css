@@ -330,6 +330,18 @@ button:active,
   background: var(--surface);
   color: var(--deep);
 }
+.case-history-link {
+  background: #fff;
+  text-align: center;
+}
+@media (max-width: 480px) {
+  .case-history-link {
+    max-width: 100%;
+    min-height: 42px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
 .hero-secondary {
   display: flex;
   gap: 14px;
