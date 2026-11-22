@@ -24,20 +24,15 @@ def emit(statement: str) -> None:
     print(";")
 
 
-def emit_file(name: str, *, ensure_planting_source: bool = False) -> None:
+def emit_file(name: str) -> None:
     for statement in _postgres_script((DATA_DIR / name).read_text(encoding="utf-8")):
-        if ensure_planting_source and "INSERT INTO CROPS" in statement.upper():
-            emit("""INSERT INTO sources (name, source_date, geographic_scope, evidence_status, limitations)
-VALUES ('Shamba Guide demo planting calendar', '2025-01-15', 'Selected demonstration counties', 'simulated',
-'Illustrative planning windows only; verify rainfall onset, soil condition, and current county advice before planting.')
-ON CONFLICT(name, source_date, geographic_scope) DO NOTHING""")
         emit(statement)
 
 
 def main() -> None:
     print("-- Generated manual Supabase schema and simulated demo fixtures.")
     print("-- Review before running. It creates/updates tables but does not delete data.\n")
-    emit_file("seed.sql", ensure_planting_source=True)
+    emit_file("seed.sql")
     emit("""ALTER TABLE outbreaks ADD COLUMN IF NOT EXISTS latitude REAL, ADD COLUMN IF NOT EXISTS longitude REAL,
 ADD COLUMN IF NOT EXISTS image_path TEXT, ADD COLUMN IF NOT EXISTS expert_approval TEXT NOT NULL DEFAULT 'not_required',
 ADD COLUMN IF NOT EXISTS expert_review_note TEXT, ADD COLUMN IF NOT EXISTS llm_identified INTEGER NOT NULL DEFAULT 0,

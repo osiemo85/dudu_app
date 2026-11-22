@@ -1,33 +1,36 @@
 from typing import Any
-from pathlib import Path
 import json
 
 from fastapi import HTTPException
 
 from app.data_access.database import database
 from app.core.config import settings
+from app.services import evidence_storage
 
 
-def case_image(case_id: int) -> Path:
+def _read_photo(reference: str) -> tuple[bytes, str]:
+    try:
+        return evidence_storage.read_image(reference, settings)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Review photo unavailable") from None
+    except evidence_storage.EvidenceStorageError:
+        raise HTTPException(status_code=503, detail="Review photo storage unavailable") from None
+
+
+def case_image(case_id: int) -> tuple[bytes, str]:
     with database() as connection:
         row = connection.execute("SELECT image_path FROM disease_cases WHERE id = ?", (case_id,)).fetchone()
     if not row or not row["image_path"]:
         raise HTTPException(status_code=404, detail="No photo saved for this case")
-    path = Path(row["image_path"]).resolve()
-    if not path.is_relative_to(settings.outbreak_evidence_dir.resolve()) or not path.is_file():
-        raise HTTPException(status_code=404, detail="Case photo unavailable")
-    return path
+    return _read_photo(row["image_path"])
 
 
-def outbreak_image(outbreak_id: int) -> Path:
+def outbreak_image(outbreak_id: int) -> tuple[bytes, str]:
     with database() as connection:
         row = connection.execute("SELECT image_path FROM outbreaks WHERE id = ?", (outbreak_id,)).fetchone()
     if not row or not row["image_path"]:
         raise HTTPException(status_code=404, detail="No photo saved for this outbreak review")
-    path = Path(row["image_path"]).resolve()
-    if not path.is_relative_to(settings.outbreak_evidence_dir.resolve()) or not path.is_file():
-        raise HTTPException(status_code=404, detail="Outbreak review photo unavailable")
-    return path
+    return _read_photo(row["image_path"])
 
 
 EDITABLE_TABLES: dict[str, tuple[str, ...]] = {

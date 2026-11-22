@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, Query, Response, status
-from fastapi.responses import FileResponse
 
 from app.models.admin import AdminRecord, AdminTable, OutbreakReview
 from app.models.user_plans import Account
@@ -10,13 +9,15 @@ router = APIRouter(prefix="/admin", tags=["demo data administration"])
 
 
 @router.get("/crop-health/disease_cases/{case_id}/image")
-def case_image(case_id: int, _: Account = Depends(current_admin)) -> FileResponse:
-    return FileResponse(admin_service.case_image(case_id), headers={"Cache-Control": "no-store"})
+def case_image(case_id: int, _: Account = Depends(current_admin)) -> Response:
+    content, content_type = admin_service.case_image(case_id)
+    return Response(content, media_type=content_type, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/crop-health/outbreaks/{outbreak_id}/image")
-def outbreak_image(outbreak_id: int, _: Account = Depends(current_admin)) -> FileResponse:
-    return FileResponse(admin_service.outbreak_image(outbreak_id), headers={"Cache-Control": "no-store"})
+def outbreak_image(outbreak_id: int, _: Account = Depends(current_admin)) -> Response:
+    content, content_type = admin_service.outbreak_image(outbreak_id)
+    return Response(content, media_type=content_type, headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.post("/crop-health/outbreaks/{outbreak_id}/review")

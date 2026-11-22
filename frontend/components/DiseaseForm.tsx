@@ -206,7 +206,7 @@ export function DiseaseForm() {
         </details>
         <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Crop photo</T><span className="font-normal text-slate-500"><T>(or describe symptoms above)</T></span>
           <input name="image" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-invalid={Boolean(validationErrors.observation)} aria-describedby={validationErrors.observation ? "observation-error" : undefined} onChange={(event) => { setImageName(event.target.files?.[0]?.name ?? ""); clearValidationError("observation"); }} className={`mt-2 block w-full rounded-xl border border-dashed bg-emerald-50 p-4 text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-700 file:px-4 file:py-2 file:font-semibold file:text-white ${validationErrors.observation ? "border-red-500 bg-red-50" : "border-emerald-300"}`} />
-          <span className="mt-2 block text-xs font-normal text-slate-500"><T>Use a clear, close photo. When OpenAI is configured, your photo and observations are sent to OpenAI for analysis. The app saves them locally only if you select expert review below.</T></span>
+          <span className="mt-2 block text-xs font-normal text-slate-500"><T>Use a clear, close photo. When OpenAI is configured, your photo and observations are sent to OpenAI for analysis. The app saves them only if you select expert review below.</T></span>
           {imageName && <span className="mt-2 block text-xs font-semibold text-emerald-800"><T>Photo ready:</T>{imageName}</span>}
           {validationErrors.observation && <span id="observation-error" role="alert" className="mt-2 block text-sm font-semibold text-red-700">{validationErrors.observation}</span>}
         </label>
@@ -215,7 +215,7 @@ export function DiseaseForm() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700"><T>2 · Local context</T></p>
         <h2 className="mt-2 text-2xl font-semibold text-emerald-950"><T>Where and when?</T></h2>
         <div className="mt-5 rounded-2xl bg-emerald-50 p-4">
-          <p className="text-sm leading-6 text-emerald-950"><T>Use your location to match local demo records. It is saved locally only if you select expert review below.</T></p>
+          <p className="text-sm leading-6 text-emerald-950"><T>Use your location to match local demo records. It is saved only if you select expert review below.</T></p>
           <button type="button" onClick={requestLocation} className="mt-3 rounded-full border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"><T>Use my location</T></button>
           {locationMessage && <p className="mt-3 text-xs leading-5 text-emerald-800">{locationMessage}</p>}
         </div>
@@ -241,7 +241,7 @@ export function DiseaseForm() {
         {validationErrors.season && <p id="season-error" role="alert" className="mt-2 text-sm font-semibold text-red-700">{validationErrors.season}</p>}
         <label className="mt-5 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
           <input name="save_for_expert_review" type="checkbox" className="mt-1 size-4 accent-emerald-700" />
-          <span><span className="font-semibold"><T>Save for expert review.</T></span><T>Store this observation, photo, any coordinates I supplied, AI findings, and agent run history locally for admins and officers. It stays unverified until an expert approves or rejects it.</T></span>
+          <span><span className="font-semibold"><T>Save for expert review.</T></span><T>Store this observation, photo, any coordinates I supplied, AI findings, and agent run history for admins and officers. It stays unverified until an expert approves or rejects it.</T></span>
         </label>
         {error && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {Object.keys(validationErrors).length > 0 && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800"><T>Complete the highlighted required fields before checking possible causes.</T></p>}

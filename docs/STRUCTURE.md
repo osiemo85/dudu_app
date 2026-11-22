@@ -99,6 +99,11 @@ This document describes the intended demo layout. Some directories may not exist
 - `backend/app/services/outbreak_recorder.py`: consent-gated photo lifecycle and compact
   outbreak review records: analysis timestamp, image description, farmer symptoms,
   local image path, and an expert decision/comment.
+- `backend/app/services/evidence_storage.py`: local development photos or private
+  Supabase Storage uploads/downloads in production; database-write failure cleanup.
+  `image_path` holds a local path or a `supabase://bucket/path` reference.
+- `backend/app/core/config.py`: `ENV=prod` resolves `SUPABASE_DATABASE_URL` for all
+  repositories and Alembic and requires the Supabase HTTPS URL, secret key and bucket.
 - `backend/app/data_access/disease_repository.py`: atomic case and pending observation writes.
 - `data/seed.sql`: additive `disease_cases` schema; existing SQLite records remain intact.
 - Crop-health admin `disease_cases`: full evidence, photos, agent identities/runs and review

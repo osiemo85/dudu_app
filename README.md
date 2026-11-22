@@ -20,7 +20,7 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
-FastAPI requires `DATABASE_URL` and uses Supabase PostgreSQL when given its
+In development (`ENV=dev`), FastAPI requires `DATABASE_URL` and uses Supabase PostgreSQL when given its
 PostgreSQL URL. Generate the manual seed, then paste it into Supabase SQL Editor:
 
 ```bash
@@ -35,6 +35,33 @@ server-side; never add it to frontend environment files.
 After creating the schema/fixtures for any database, run `uv run alembic upgrade
 head`. Structural changes are tracked under `backend/alembic/versions`; simulated
 fixture data remains in `data/` and is not managed by Alembic.
+
+For production, set these **backend-only** environment variables:
+
+```dotenv
+ENV=prod
+SUPABASE_DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@[POOLER-HOST]:5432/postgres?sslmode=require
+SUPABASE_URL=https://[PROJECT-REF].supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+SUPABASE_STORAGE_BUCKET=disease-photos
+```
+
+`SUPABASE_DATABASE_URL` replaces `DATABASE_URL` only in production, including for
+Alembic. `SUPABASE_URL` is the HTTPS project URL, not the database connection
+string. Missing production settings stop startup instead of selecting a local
+database or filesystem. Keep `FRONTEND_URL` set to your deployed frontend origin.
+
+Create `disease-photos` in Supabase **Storage** with **Public disabled**, a 10 MB
+file limit, and JPEG/PNG/WebP allowed types. Get the project URL from **Connect**
+and the backend secret from **Settings → API Keys**. Run the manual seed and
+`uv run alembic upgrade head` before starting the API. The bucket is checked for
+privacy before uploads and downloads. Only consented crop-review photos are
+uploaded; database records store a `supabase://bucket/path` reference. Admin photo
+endpoints check the existing account role and proxy private bytes with `no-store`.
+Upload or database failures preserve the advisory result and report a failed save;
+failed database writes trigger best-effort photo deletion. A cleanup warning
+requires manual reconciliation. Existing local photos are not migrated automatically.
+Animal photos remain device-only previews. See [backend setup](backend/README.md).
 
 The OpenAI Agents SDK uses `OPENAI_API_KEY` and `OPENAI_MODEL` through the Responses API. OpenRouter and the manual chat-completions loop are no longer used. Without an OpenAI key, written symptom matching remains available; photos require OpenAI.
 Results show whether AI analysis completed and whether the photo was analyzed.
@@ -84,8 +111,9 @@ both servers after changing either value.
    A report or storage failure is visible without discarding a completed identification.
 
 Edit `data/seed.sql` to change fresh-install sample data. Existing databases keep
-admin edits across restarts. Consented review photos are stored locally under
-`data/outbreak_evidence/` and are git-ignored.
+admin edits across restarts. In development, consented review photos are stored
+under `data/outbreak_evidence/` and are git-ignored. Production uses the private
+Supabase Storage bucket described above.
 
 ## Accounts and information databases
 

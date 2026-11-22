@@ -14,10 +14,48 @@ uv run uvicorn app.main:app --reload
 ## Supabase PostgreSQL
 
 Set `DATABASE_URL` in `backend/.env` to the PostgreSQL connection string from
-Supabase **Connect**. This setting is required: the app does not select SQLite
+Supabase **Connect** for `ENV=dev` (the default). This setting is required: the app does not select SQLite
 or create a local database implicitly. Prefer Supabase's pooler
 connection string for serverless or IPv4-only environments, and retain the
 required `sslmode=require` query parameter when Supabase provides it.
+
+For `ENV=prod`, configure all four backend-only settings instead:
+
+```dotenv
+ENV=prod
+SUPABASE_DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@[POOLER-HOST]:5432/postgres?sslmode=require
+SUPABASE_URL=https://[PROJECT-REF].supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+SUPABASE_STORAGE_BUCKET=disease-photos
+```
+
+The database string comes from **Connect → Direct**; use the session pooler for
+an IPv4-only persistent backend, or direct connection where IPv6 is available.
+`SUPABASE_URL` is the HTTPS project URL from **Connect → Framework**. The secret
+key comes from **Settings → API Keys** and must never reach the frontend.
+Production ignores `DATABASE_URL` and requires the Supabase database, HTTPS URL,
+secret key and bucket. Alembic uses the same resolved database with psycopg 3.
+Keep `FRONTEND_URL` configured separately with the deployed frontend origin.
+
+Create the bucket under **Storage** with Public disabled, a 10 MB file limit and
+`image/jpeg`, `image/png`, `image/webp` allowed types. No public-access policy is
+needed: the backend checks administrator access and proxies private photos.
+Production checks bucket privacy before upload/read and never falls back to disk.
+Only expert-review consent enables crop photo uploads. Stored references use
+`supabase://bucket/disease-cases/<random-id>.<extension>` in the existing
+`image_path` column; no photo schema migration is needed. An upload/database
+failure reports a failed save without erasing the result. Database failures
+trigger best-effort photo deletion; reconcile the bucket if cleanup logs a warning.
+Existing disk photos are not automatically uploaded; production will show those
+legacy photos as unavailable. Animal photos remain device-only previews.
+
+The integration is covered with mocked Storage HTTP responses. Verify the target
+project before deployment: run the seed/migrations, create an administrator,
+submit a crop photo with expert-review consent, confirm the bucket object exists,
+then open it from the admin case and outbreak screens. Check that a signed-out
+photo request is denied and a submission without consent creates no object.
+Also run the independent planting sample in the root README. Automated tests do
+not contact a real Supabase project or validate deployment credentials.
 
 Run the schema and fixture seed manually before deployment, then apply tracked
 Alembic migrations. The API does not connect to any live agricultural source.
@@ -29,6 +67,27 @@ uv run python scripts/export_supabase_seed.py > ../data/supabase_seed.sql
 
 Open Supabase Dashboard → **SQL Editor**, paste the generated file, and run it.
 The seed is additive and does not delete existing rows.
+
+Startup and the SQL export advance PostgreSQL identity sequences immediately
+after inserting explicit fixture IDs. This prevents later source records from
+being skipped on ID conflicts, which previously left weather `source_id` values
+missing. If startup failed with that error, restart the backend with the updated
+code; no database reset or nullable source column is needed. For manual setup,
+regenerate and rerun the SQL export.
+
+To run the PostgreSQL seed and connection regression tests, set `TEST_POSTGRES_DATABASE_URL`
+to a test database, then run:
+
+```bash
+uv run python -m unittest discover -s tests -p 'test_postgres*.py' -v
+```
+
+These tests create and remove isolated temporary schemas; the database user
+needs permission to create schemas.
+
+The PostgreSQL adapter reads inserted IDs from `RETURNING` rows. Session rows
+use a token key and have no generated ID; registration and login must not call
+PostgreSQL's session-wide `LASTVAL()` for these inserts.
 
 Then run:
 

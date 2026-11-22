@@ -26,7 +26,7 @@ def _database_kind() -> str:
     if url.startswith("sqlite:///"):
         return "sqlite"
     if not url:
-        raise RuntimeError("DATABASE_URL is required. Set it to your Supabase/PostgreSQL URL or an explicit sqlite:/// URL.")
+        raise RuntimeError("Set DATABASE_URL for development, or SUPABASE_DATABASE_URL with ENV=prod.")
     raise RuntimeError("Unsupported DATABASE_URL scheme. Use postgresql://, postgres://, or sqlite:///.")
 
 
@@ -43,22 +43,36 @@ def _sqlite_path() -> str:
 
 
 def _split_sql(script: str) -> list[str]:
-    """Split fixture SQL without breaking semicolons inside quoted text."""
+    """Split fixture SQL without breaking quoted text or SQL comments."""
     statements: list[str] = []
     current: list[str] = []
     quote: str | None = None
+    line_comment = False
+    block_comment = False
     index = 0
     while index < len(script):
         character = script[index]
         following = script[index + 1] if index + 1 < len(script) else ""
         current.append(character)
-        if quote:
+        if line_comment:
+            if character in "\r\n":
+                line_comment = False
+        elif block_comment:
+            if character == "*" and following == "/":
+                current.append(following)
+                index += 1
+                block_comment = False
+        elif quote:
             if character == quote:
                 if following == quote:
                     current.append(following)
                     index += 1
                 else:
                     quote = None
+        elif character == "-" and following == "-":
+            line_comment = True
+        elif character == "/" and following == "*":
+            block_comment = True
         elif character in {"'", '"'}:
             quote = character
         elif character == ";":
@@ -85,6 +99,16 @@ def _postgres_script(script: str) -> list[str]:
         if idempotent:
             statement += " ON CONFLICT DO NOTHING"
         statements.append(statement)
+        insert = re.search(r"\bINSERT\s+INTO\s+([a-z_]\w*)\s*\(([^)]+)\)", statement, re.I)
+        if insert and "id" in {column.strip().lower() for column in insert[2].split(",")}:
+            # Explicit fixture IDs do not advance PostgreSQL identity sequences.
+            # Advance before the next insert can allocate an overlapping ID and
+            # silently skip a required record via ON CONFLICT DO NOTHING.
+            table = insert[1]
+            statements.append(
+                f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+                f"COALESCE((SELECT MAX(id) FROM {table}), 1), true)"
+            )
     return statements
 
 
@@ -111,13 +135,18 @@ class _PostgresConnection:
 
     def execute(self, query: str, parameters: tuple[Any, ...] = ()) -> _PostgresCursor:
         cursor = self._connection.cursor(row_factory=dict_row)
+        capture_insert = bool(re.match(r"(?is)^\s*INSERT\b", query)) and not re.search(r"\bRETURNING\b", query, re.I)
+        if capture_insert:
+            # Read this insert's actual row, including on tables with no id.
+            # LASTVAL() is session-wide: it can be undefined, refer to an older
+            # insert, or return an unrelated sequence advanced by a trigger.
+            query = query.rstrip().removesuffix(";") + " RETURNING *"
         cursor.execute(query.replace("?", "%s"), parameters)
         lastrowid = None
-        if re.match(r"(?is)^\s*INSERT\b", query):
-            identity_cursor = self._connection.cursor(row_factory=dict_row)
-            identity_cursor.execute("SELECT LASTVAL() AS id")
-            identity = identity_cursor.fetchone()
-            lastrowid = int(identity["id"]) if identity else None
+        if capture_insert:
+            inserted = cursor.fetchone()
+            if inserted and inserted.get("id") is not None:
+                lastrowid = int(inserted["id"])
         return _PostgresCursor(cursor, lastrowid)
 
     def commit(self) -> None:
@@ -136,15 +165,6 @@ def _initialize_postgres() -> None:
         # Supabase is storage only. These fixtures remain simulated, editable data.
         for path in (settings.seed_path,):
             for statement in _postgres_script(path.read_text(encoding="utf-8")):
-                # PostgreSQL enforces the crop foreign key immediately. Ensure
-                # this named fixture source exists before the crop seed's
-                # subquery resolves it, including after an interrupted setup.
-                if re.search(r"\bINSERT\s+INTO\s+crops\b", statement, re.I):
-                    connection.execute("""INSERT INTO sources
-                        (name, source_date, geographic_scope, evidence_status, limitations)
-                        VALUES ('Shamba Guide demo planting calendar', '2025-01-15', 'Selected demonstration counties', 'simulated',
-                        'Illustrative planning windows only; verify rainfall onset, soil condition, and current county advice before planting.')
-                        ON CONFLICT(name, source_date, geographic_scope) DO NOTHING""")
                 connection.execute(statement)
         connection.execute("""ALTER TABLE outbreaks ADD COLUMN IF NOT EXISTS latitude REAL, ADD COLUMN IF NOT EXISTS longitude REAL,
             ADD COLUMN IF NOT EXISTS image_path TEXT, ADD COLUMN IF NOT EXISTS expert_approval TEXT NOT NULL DEFAULT 'not_required',

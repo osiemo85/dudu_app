@@ -19,7 +19,10 @@ target_metadata = None
 def database_url() -> str:
     url = settings.database_url.strip()
     if not url:
-        raise RuntimeError("DATABASE_URL is required before running Alembic.")
+        raise RuntimeError("Set DATABASE_URL, or SUPABASE_DATABASE_URL with ENV=prod, before running Alembic.")
+    # Use the same psycopg 3 driver as FastAPI for standard Supabase URLs.
+    if url.startswith(("postgres://", "postgresql://")):
+        return "postgresql+psycopg://" + url.split("://", 1)[1]
     return url
 
 

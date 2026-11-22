@@ -1,13 +1,11 @@
 """Persist consented review cases after model output validation, never from a tool."""
 import json
 from datetime import UTC, datetime
-from uuid import uuid4
 
 from app.core.config import settings
 from app.data_access import disease_repository as repository
 from app.models.disease import DiseaseRequest, DiseaseResponse, RecordingStatus
-
-_IMAGE_SUFFIXES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+from app.services import evidence_storage
 
 
 def record_identification(request: DiseaseRequest, result: DiseaseResponse,
@@ -17,10 +15,8 @@ def record_identification(request: DiseaseRequest, result: DiseaseResponse,
     recorded_at = datetime.now(UTC).isoformat()
     stored_image = None
     try:
-        if image and image_content_type in _IMAGE_SUFFIXES:
-            settings.outbreak_evidence_dir.mkdir(parents=True, exist_ok=True)
-            stored_image = settings.outbreak_evidence_dir / f"{uuid4().hex}{_IMAGE_SUFFIXES[image_content_type]}"
-            stored_image.write_bytes(image)
+        if image and image_content_type in evidence_storage.IMAGE_SUFFIXES:
+            stored_image = evidence_storage.save_image(image, image_content_type, settings)
         observation = request.model_dump()
         observation.update({"image_content_type": image_content_type if stored_image else None,
                             "consented_at": recorded_at, "observation_date": None})
@@ -33,7 +29,7 @@ def record_identification(request: DiseaseRequest, result: DiseaseResponse,
             "agent_runs_json": json.dumps([run.model_dump() for run in result.agent_runs]),
             "officer_report_json": result.officer_report.model_dump_json() if result.officer_report else None,
             "observation_json": json.dumps(observation), "result_json": json.dumps(snapshot),
-            "image_path": str(stored_image.resolve()) if stored_image else None,
+            "image_path": stored_image,
         }
         outbreak = None
         if result.analysis.status == "completed" and result.candidates:
@@ -52,8 +48,8 @@ def record_identification(request: DiseaseRequest, result: DiseaseResponse,
             }
         case_id = repository.save_disease_case(values, outbreak)
         return RecordingStatus(status="saved", case_id=case_id,
-                               message="Saved locally for officer review. This record is unverified and pending review.")
+                               message="Saved for officer review. This record is unverified and pending review.")
     except Exception:
         if stored_image:
-            stored_image.unlink(missing_ok=True)
+            evidence_storage.cleanup_image(stored_image, settings)
         raise

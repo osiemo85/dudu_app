@@ -152,6 +152,15 @@ identification. Reviewers can inspect full case evidence and record their decisi
 Farmer submissions without consent must not be retained locally. Trace export is disabled;
 coordinates are not sent to the models, and raw exchanges are not logged.
 
+Production persistence uses the explicitly configured Supabase database and private
+Storage bucket when `ENV=prod`: `SUPABASE_DATABASE_URL`, `SUPABASE_URL`,
+`SUPABASE_SECRET_KEY`, and `SUPABASE_STORAGE_BUCKET` are required server settings.
+Development retains `DATABASE_URL` and local photo storage. Expert-review consent
+gates all persistence in either mode. Production has no local fallback; authenticated
+administrators retrieve photos through the backend with caching disabled. Existing
+local photos require a separate migration before being available in production.
+Supabase is persistence infrastructure, not a source of live agricultural evidence.
+
 The disease workflow uses three separate roles. The photo-symptom agent returns a
 one- or two-line description and visible symptoms. The database-search agent compares
 those observations with any farmer-entered symptoms, chooses only exact supplied
@@ -280,3 +289,26 @@ Navigation, authentication controls, core form labels and animal intake/results
 have authored translations. Existing agricultural evidence, stored case snapshots
 and some older output text retain their original language, explicitly disclosed
 in the Swahili interface. User-entered observations are never machine-translated.
+
+## 13. Production persistence
+
+The explicitly requested production integration uses Supabase for PostgreSQL and
+private crop-review photos. `ENV=prod` requires `SUPABASE_DATABASE_URL`,
+`SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `SUPABASE_STORAGE_BUCKET`. The first is
+the PostgreSQL connection string; the second is the HTTPS project API URL. All
+are backend configuration, and credentials must never reach the browser. The
+production database setting also applies to Alembic. Missing settings prevent
+startup; production must never fall back to a development database or local photo
+storage. Development continues using an explicitly configured `DATABASE_URL` and
+local consented photo storage.
+
+Crop photos are uploaded only after expert-review consent. The configured bucket
+must be private; a public or unavailable bucket causes an explicit failed save,
+while preserving the completed advisory. Store a bucket/object reference in the
+case and linked pending outbreak, not a public URL or signed token. Existing
+authenticated administrator photo endpoints proxy private file bytes with
+`Cache-Control: no-store`. If the database save fails, attempt to delete the new
+object without masking the original error; failed cleanup requires reconciliation.
+Existing local photos require an explicit migration and are not read from disk in
+production. Animal photos remain device-only previews. This persistence change
+does not turn simulated agricultural evidence into a live or verified advisory.
