@@ -84,3 +84,96 @@ persistence, logout, Escape/focus return and outside-click dismissal. No browser
 JavaScript errors occurred. Independent crop and planting submissions also passed.
 Frontend ESLint, TypeScript and whitespace checks pass. Backend account behavior
 is unchanged by this UI revision.
+
+## Header installation and admin workspace — 2026-11-22
+
+The install promotion banner is removed. A labeled download icon is the last
+header action, after English/Kiswahili. It opens a browser install prompt when
+available or a compact instruction dialog. Installed apps hide the control;
+offline feedback remains visible. Administrators have an Administration sidebar
+link and the same destination in the phone account menu.
+
+The admin workspace uses compact database tabs on larger screens, a labeled
+database selector on phones, searchable records, fixed review-status filters,
+status badges and mobile record cards. Saved county/area and season fields are
+displayed in the case list. Loading, errors and empty results have distinct
+states. JSON evidence is expandable. Dialog effects no longer queue a close
+event during React Strict Mode's development checks.
+
+Chromium checks passed using an isolated SQLite/FastAPI service with optional
+local fixtures and no OpenAI key; the configured application database and real
+accounts were not changed:
+
+- No horizontal overflow at 320×740, 375×812, 768×1024, 812×375, 1024×720 and
+  1440×1000; installation follows the language controls at each width.
+- Install fallback, simulated native prompt, Escape dismissal, translated install
+  label, offline feedback and installed-state hiding passed.
+- Admin login, sidebar navigation, case details, saving a review note/decision,
+  pending/approved filters, search and empty-result recovery passed.
+- Contributor source creation and editing passed. Guests and ordinary farmers
+  have no visible admin link; the workspace still requires administrator access.
+- Independent disease and planting forms returned structured results from the
+  documented sample inputs without an AI provider. Unconsented disease requests
+  remained unsaved. No browser JavaScript errors occurred.
+
+ESLint, TypeScript, API response tests, focused backend manual-disease and
+Duducare tests, and whitespace checks passed. PostgreSQL-only tests were skipped.
+The production build passed after the existing Next.js security reminder; the
+installed Next.js version still reports an upgrade warning. Native installation
+on physical iOS/Android devices remains a manual follow-up.
+
+## Compact navigation and language selector — 2026-11-22
+
+Small-screen navigation now shows icons with accessible names and labels on
+hover or keyboard focus. Escape dismisses a label without moving focus. Admin
+accounts have a sixth icon for Administration; guests and farmers retain five.
+Desktop sidebar labels remain visible. The header and Settings use a compact
+EN/SW native dropdown with full language names in its options. Help is a visible
+text link, and installation remains the final header action.
+
+Chromium checks passed at 320×740, 375×812, 768×1024, 812×375, 1024×720 and
+1440×1000 for layout bounds, accessible navigation names, 44px mobile targets,
+tooltip hover/focus/Escape, the admin destination, Help visibility and install
+ordering. Language changes persisted after reload. Both advisory forms completed
+against the isolated local fixture service without an AI provider. Install-help,
+offline and installed-state checks also passed, with no JavaScript page errors.
+ESLint, TypeScript and whitespace checks passed.
+
+## Persistent expert messages and optional profile location — 2026-11-22
+
+`/profile` now saves optional, manually entered county and area. `/chat` now
+provides private conversations with selected database admin/expert accounts;
+the original scripted assistant remains separate at `/chat/assistant`.
+Messages persist in the configured database, with participant ownership checks,
+retry identifiers, paginated history and explicit read progress. Unread totals
+are shared by desktop/mobile navigation and checked regularly while visible.
+
+Validated against isolated SQLite and PostgreSQL 18 databases, without changing
+real accounts or sending messages to real users:
+
+- All 15 messaging/profile/migration tests passed, including both database
+  implementations, participant privacy, a non-participant admin, idempotent
+  retries, incoming messages arriving after a fetch, monotonic read markers,
+  large PostgreSQL IDs and restart-preserved history/read progress.
+- Six PostgreSQL connection/account regression tests passed. Profile, manual
+  disease, Duducare, animal-health and saved-plan tests also passed; the separate
+  PostgreSQL manual-disease suite was not rerun for this feature.
+- Fresh Alembic upgrades reached `20261122_02` on both engines, with no seeded
+  accounts or messages. Repeated additive initialization preserved records.
+- Two independent Chromium sessions selected an expert by area, saved/reloaded
+  profile fields, exchanged messages, reopened saved history and showed/cleared
+  unread counts on both sidebar and mobile icons. A dropped response after a
+  committed send retained the draft and produced only one message on retry.
+- History longer than 50 messages loaded previous pages. New arrivals stayed
+  unread while reading earlier history, then cleared on reaching the bottom.
+- Chat layouts passed at 320×740, 375×812, 768×1024, 812×375, 1024×720 and
+  1440×1000 with no horizontal overflow. The composer cleared the mobile bar,
+  including landscape. No browser JavaScript page errors were observed.
+- Independent disease and planting submissions still returned structured
+  results using the documented local fixtures, without an OpenAI key.
+
+ESLint, TypeScript, API response tests, whitespace checks and the production
+build passed. The build continues to report the installed Next.js version's
+existing security-upgrade warning. Real deployment credentials, professional
+expert credentials, delivery/response guarantees and native push notifications
+are not established by these local checks.

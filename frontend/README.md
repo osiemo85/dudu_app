@@ -17,6 +17,13 @@ origin (for example, `http://localhost:8000`). The value is server-only:
 Next.js proxies browser requests from `/api/v1/*` to that origin, so no backend
 host is embedded in browser code.
 
+The Node.js rewrite proxy allows up to five minutes for backend responses.
+Disease photo analysis, local evidence lookup and final review can exceed the
+Next.js default of 30 seconds; that default caused HTTP 500 responses with
+`Failed to proxy ... socket hang up` while FastAPI was still processing.
+Restart Next.js after changing `experimental.proxyTimeout` in `next.config.ts`.
+Hosted platforms can impose their own request limits independently of this setting.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
@@ -60,13 +67,19 @@ the disease and planting sample flows in the root README.
 
 Run `npm run test:api` to check backend-target validation and account response
 handling, including HTML/text proxy errors and FastAPI validation failures.
+Run `npm run test:proxy` for the multipart transport regression: a simulated
+disease response delayed past 30 seconds must still arrive, while the independent
+planting endpoint remains reachable. This check takes about 31 seconds and uses
+only local test servers, with no model calls or agricultural database writes.
 
 
 Duducare provides Home, Planting, Crop health, Farm chat, and My farm navigation.
-Mobile uses five fixed tabs; laptops use a sidebar. See the root README for
+Mobile uses five navigation icons plus an admin-only icon; laptops use a sidebar. See the root README for
 sample inputs, saved plan flows and PWA production/offline testing. The visual
 reference is the repository-root `index.html`; app colors and spacing are in
-`app/duducare.css`. Chat is scripted, and device notes are not cloud synced.
+`app/duducare.css`. Farm chat persists private expert conversations and shows
+unread-message badges. A separate scripted assistant is available at
+`/chat/assistant`; device notes are not cloud synced.
 
 Duducare layout/theme CSS is imported separately in `app/layout.tsx`;
 `app/globals.css` contains only Tailwind imports and token mappings. This keeps

@@ -269,7 +269,6 @@ async def _identify(client: AsyncOpenAI, request: DiseaseRequest, image: bytes |
             looked_up = True
             local_evidence["selected_observations"] = selected_observations
             local_evidence["candidate_records"] = rows
-            print("Selected observations:", selected_observations)
             return json.dumps(rows)
 
         def validate_tool_ids(disease_ids: list[int]) -> None:
@@ -298,7 +297,6 @@ async def _identify(client: AsyncOpenAI, request: DiseaseRequest, image: bytes |
             rows = repository.get_treatments(request.county or "", request.crop, disease_ids)
             treatment_ids.update(disease_ids)
             local_evidence["supported_treatments"] = rows
-            print("Supported treatments:", rows)
             return json.dumps(rows)
 
         search_agent = Agent(

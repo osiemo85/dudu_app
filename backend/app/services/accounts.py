@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, Request, Response
 
 import app.data_access.database as database_access
 from app.data_access.database import database
-from app.models.user_plans import Account, Credentials, Registration
+from app.models.user_plans import Account, Credentials, ProfileUpdate, Registration
 
 COOKIE_NAME = 'shamba_session'
 SESSION_SECONDS = 7 * 24 * 60 * 60
@@ -47,21 +47,21 @@ def register(registration: Registration, response: Response, request: Request) -
 
 def login(credentials: Credentials, response: Response, request: Request) -> Account:
     with database() as connection:
-        row = connection.execute('SELECT id,name,email,role,password_hash FROM users WHERE email=?', (credentials.email,)).fetchone()
+        row = connection.execute('SELECT id,name,email,role,county,area,password_hash FROM users WHERE email=?', (credentials.email,)).fetchone()
     # Perform the same password derivation even if the account is absent.
     salt_hex, expected = row['password_hash'].split(':') if row else ('00' * 16, '00' * 64)
     actual = _password_hash(credentials.password, bytes.fromhex(salt_hex))
     if not row or not hmac.compare_digest(actual, expected):
         raise HTTPException(status_code=401, detail='Incorrect email or password.')
     _set_session(response, row['id'], request)
-    return Account(id=row['id'], name=row['name'], email=row['email'], role=row['role'])
+    return Account(**{key: row[key] for key in ('id', 'name', 'email', 'role', 'county', 'area')})
 
 
 def current_user(request: Request) -> Account:
     token = request.cookies.get(COOKIE_NAME)
     if token:
         with database() as connection:
-            row = connection.execute('''SELECT u.id,u.name,u.email,u.role FROM user_sessions s JOIN users u ON u.id=s.user_id
+            row = connection.execute('''SELECT u.id,u.name,u.email,u.role,u.county,u.area FROM user_sessions s JOIN users u ON u.id=s.user_id
                 WHERE s.token_hash=? AND s.expires_at>?''', (_token_hash(token), datetime.now(UTC).isoformat())).fetchone()
         if row:
             return Account(**dict(row))
@@ -91,8 +91,10 @@ def logout(request: Request, response: Response) -> None:
     response.delete_cookie(COOKIE_NAME, path='/', httponly=True, samesite='lax', secure=request.url.scheme == 'https')
 
 
-def update_profile(user_id: int, name: str) -> Account:
+def update_profile(user_id: int, data: ProfileUpdate) -> Account:
+    values = data.model_dump(exclude_unset=True, include={'name', 'county', 'area'})
     with database() as connection:
-        connection.execute('UPDATE users SET name=? WHERE id=?', (name, user_id))
-        row=connection.execute('SELECT id,name,email,role FROM users WHERE id=?', (user_id,)).fetchone()
+        assignments = ', '.join(f'{column}=?' for column in values)
+        connection.execute(f'UPDATE users SET {assignments} WHERE id=?', (*values.values(), user_id))
+        row=connection.execute('SELECT id,name,email,role,county,area FROM users WHERE id=?', (user_id,)).fetchone()
     return Account(**dict(row))

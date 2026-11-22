@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useState } from "react";
 import { PUBLIC_API_BASE_URL } from "@/lib/api";
 import {
   AdminTables,
   cropHealthTables,
+  cropHealthTableLabels,
   type CropHealthTable,
 } from "./AdminTables";
+import { Icon } from "./Icon";
 
 export function AdminWorkspace({
   table = "disease_cases",
 }: {
   table?: string;
 }) {
+  const router = useRouter();
+  const databaseId = useId();
   const [access, setAccess] = useState<"checking" | "allowed" | "denied">(
     "checking",
   );
@@ -69,23 +74,35 @@ export function AdminWorkspace({
       </section>
     );
   return (
-    <>
+    <div className="admin-workspace">
+      <header className="admin-workspace-header">
+        <div>
+          <p className="eyebrow">Administration</p>
+          <p className="admin-workspace-title">Crop health workspace</p>
+        </div>
+        <span className="admin-access-badge"><Icon name="clipboard" size={15} />Admin access</span>
+      </header>
+      <div className="admin-mobile-database">
+        <label htmlFor={databaseId}>Information database</label>
+        <select id={databaseId} className="field" value={table} onChange={(event) => router.push(`/disease/admin/${event.target.value}`)}>
+          {cropHealthTables.map((name) => <option key={name} value={name}>{cropHealthTableLabels[name]}</option>)}
+        </select>
+      </div>
       <nav
         aria-label="Information databases"
-        className="mb-5 flex flex-wrap gap-2"
+        className="admin-database-nav"
       >
         {cropHealthTables.map((name) => (
           <Link
             key={name}
             href={`/disease/admin/${name}`}
             aria-current={name === table ? "page" : undefined}
-            className={`button ${name === table ? "button-primary" : "button-secondary"}`}
           >
-            {name.replaceAll("_", " ")}
+            {cropHealthTableLabels[name]}
           </Link>
         ))}
       </nav>
       <AdminTables key={table} table={table as CropHealthTable} />
-    </>
+    </div>
   );
 }

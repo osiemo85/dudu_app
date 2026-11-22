@@ -1,5 +1,9 @@
 import type { CSSProperties } from "react";
 export type IconName =
+  | "clipboard"
+  | "search"
+  | "refresh"
+  | "plus"
   | "home"
   | "scan"
   | "plant"
@@ -19,6 +23,10 @@ export type IconName =
   | "chevron"
   | "back";
 const paths: Record<IconName, string> = {
+  clipboard: "M9 4H6a2 2 0 0 0-2 2v14h16V6a2 2 0 0 0-2-2h-3M9 2h6v5H9ZM8 12h8m-8 4h5",
+  search: "M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z",
+  refresh: "M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1",
+  plus: "M12 5v14M5 12h14",
   settings: "M4 7h16M4 17h16M9 4v6m6 4v6",
   logout: "M9 4H4v16h5m5-13 5 5-5 5m-6-5h15",
   chevron: "m9 5 7 7-7 7",

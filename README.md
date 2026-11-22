@@ -209,11 +209,13 @@ Demonstrate both flows:
    Long rains / Maize to view a growing plan. The plan includes sourced stages;
    sign in to save an account-owned snapshot, then add observations under
    My farm → Saved planting plans.
-3. **Farm chat**: ask `What should I plant?` with no context for a clarification;
-   choose context and resend. Ask about pesticide doses to see the safe boundary.
-   Replies are editable scripts in `data/chat_guidance.json`, not live AI,
-   community messaging, or a consultation. Each request uses current selections;
-   chat is memory-only and earlier messages are not analysed.
+3. **Farm chat**: log in, choose an expert from the database-backed directory,
+   and send a private message. Log in as that expert in another browser/profile
+   to see the unread badge and reply. Conversations survive reload and logout.
+   Existing administrator accounts serve as expert-review accounts in this demo;
+   their credentials and response times are not verified. See the messaging setup
+   below. The separate `/chat/assistant` still provides editable scripted replies
+   from `data/chat_guidance.json`; it keeps no saved history or access to expert chats.
 4. **My farm**: save a plot observation, reload to confirm local persistence,
    search it, export JSON, and delete it. Notes stay in this browser. Account
    plans are stored separately with ownership-checked backend access.
@@ -261,7 +263,9 @@ Other accounts cannot access the saved observation. Saving does not contact a ve
 
 The circle avatar in the sidebar footer opens a compact account menu; phones
 have the same avatar in the header. The menu shows your name, Profile, Settings
-and Log out. Profile opens `/profile` to edit your name; email is read-only.
+and Log out. Profile opens `/profile` to edit your name and optional, manually
+entered county/area; email and role are read-only. Chat participants can see the
+name and optional location, and expert locations appear in the expert picker.
 Settings opens `/settings`. English/Kiswahili is available there and in the header, including
 before login. The preference remains on this browser after logout.
 Legacy evidence records and saved results keep their original wording; the
@@ -270,6 +274,49 @@ Swahili interface discloses this rather than silently translating source materia
 For existing PostgreSQL databases, run `uv run alembic upgrade head` from backend
 before saving animal cases. Schema-only startup creates the same empty tables
 on either backend. Restart FastAPI after updating.
+
+## Expert messages and profile location
+
+Run `uv run alembic upgrade head` from `backend` and restart FastAPI after
+updating. Revision `20261122_02` adds optional profile fields, private
+conversations and message tables without seed accounts or messages. The same
+additive schema upgrade runs during startup on SQLite and PostgreSQL, including
+the configured Supabase database in production. Existing data is retained.
+
+Create an expert account using `uv run python scripts/create_admin.py` if one is
+not already present. Admin accounts are the existing expert-review login. In
+`/profile`, an expert can optionally add county/area to make the directory easier
+to browse. These are self-reported locations, not verified coverage or GPS.
+
+For a complete demonstration, use two independent browser profiles:
+
+1. Sign in as a farmer, open **Farm chat → Choose an expert**, and select the
+   intended expert by name/area. Send a question.
+2. Sign in as that expert in the second browser. The chat icon shows the number
+   of unread incoming messages. Open the conversation and reply.
+3. Return to the farmer's browser. The reply appears as unread until that
+   conversation is open, the tab is focused, and the reader reaches the bottom.
+   Reload or log out/in to verify saved history. **Load earlier messages** opens
+   previous pages of a long conversation.
+
+The inbox/thread poll every five seconds; the navigation badge polls every
+15 seconds while visible and refreshes on focus. They are not browser push
+notifications. Each conversation is accessible only to its two participants;
+unrelated admins cannot inspect it. Messages are plain text, capped at 4,000
+characters, and retry identifiers prevent duplicates after a lost response.
+Connection failures retain the draft in the current thread; messages are never
+queued offline. No chat content is cached by the service worker or sent to AI.
+Opening the scripted assistant does not mark expert messages read.
+
+Focused backend checks:
+
+```bash
+uv run python -m unittest discover -s tests -p 'test_messaging.py'
+```
+
+Set `TEST_POSTGRES_DATABASE_URL` to a disposable PostgreSQL
+database to also run the isolated-schema PostgreSQL cases. Tests create their
+own accounts and messages, never fixture users in the configured application DB.
 
 Focused verification from backend:
 

@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.data_access.database import _PostgresConnection, _postgres_script, psycopg
+from app.data_access.messaging_schema import initialize_messaging_schema
 from app.main import app
 
 
@@ -26,6 +27,7 @@ class PostgresConnectionTests(unittest.TestCase):
         self.raw.execute("CREATE TABLE disease_cases (id BIGINT PRIMARY KEY, user_id BIGINT, created_at TEXT)")
         for statement in _postgres_script((settings.seed_path.parent / "user_plans.sql").read_text()):
             self.raw.execute(statement)
+        initialize_messaging_schema(self.raw, postgres=True)
         self.connection = _PostgresConnection(self.raw)
         parts = urlsplit(url)
         params = dict(parse_qsl(parts.query))

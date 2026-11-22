@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.admin import router as admin_router
 from app.api.v1.planting import router as planting_router
 from app.api.v1.chat import router as chat_router
+from app.api.v1.messaging import router as messaging_router
 from app.api.v1.animal_health import router as animal_health_router
 from app.api.v1.disease import router as disease_router
 from app.api.v1.health import router as health_router
@@ -41,7 +42,7 @@ app.add_middleware(
 @app.middleware("http")
 async def private_account_responses(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin", "/api/v1/disease/cases", "/api/v1/saved-plans", "/api/v1/chat", "/api/v1/animal-health")):
+    if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin", "/api/v1/disease/cases", "/api/v1/saved-plans", "/api/v1/chat", "/api/v1/animal-health", "/api/v1/messaging")):
         response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -53,5 +54,6 @@ app.include_router(user_plans_router, prefix="/api/v1")
 
 app.include_router(planting_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(messaging_router, prefix="/api/v1")
 
 app.include_router(animal_health_router, prefix="/api/v1")

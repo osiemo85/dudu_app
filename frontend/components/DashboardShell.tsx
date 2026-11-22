@@ -8,6 +8,9 @@ import { Icon, type IconName } from "./Icon";
 import { AccountMenu } from "./AccountMenu";
 import { useLanguage, LanguageSwitch } from "./LanguageProvider";
 import { PwaStatus } from "./PwaStatus";
+import { AdminSidebarLink } from "./AdminSidebarLink";
+import { NavigationLink } from "./NavigationLink";
+import { useUnreadMessages } from "./MessagingProvider";
 const links: { href: string; label: string; icon: IconName }[] = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/planting", label: "Planting", icon: "plant" },
@@ -29,6 +32,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   );
 }
 function DashboardContent({ children }: { children: ReactNode }) {
+  const { unreadCount } = useUnreadMessages();
   const { t, language } = useLanguage();
   const pathname = usePathname();
   const main = useRef<HTMLElement>(null);
@@ -36,25 +40,24 @@ function DashboardContent({ children }: { children: ReactNode }) {
     main.current?.focus({ preventScroll: true });
   }, [pathname]);
   const navigation = links.map((item) => (
-    <Link
+    <NavigationLink
       key={item.href}
       href={item.href}
-      aria-current={
+      label={t(item.label)}
+      icon={item.icon}
+      unreadCount={item.href === "/chat" ? unreadCount : 0}
+      unreadLabel={t("unread messages", "ujumbe ambao haujasomwa")}
+      active={
         (
           item.href === "/"
             ? pathname === "/"
             : pathname.startsWith(item.href) ||
               (item.href === "/health" &&
-                (pathname.startsWith("/disease") ||
+                ((pathname.startsWith("/disease") && !pathname.startsWith("/disease/admin")) ||
                   pathname.startsWith("/animal-health")))
         )
-          ? "page"
-          : undefined
       }
-    >
-      <Icon name={item.icon} />
-      <span>{t(item.label)}</span>
-    </Link>
+    />
   ));
   return (
     <div className="app-layout">
@@ -70,13 +73,15 @@ function DashboardContent({ children }: { children: ReactNode }) {
             dudu<span className="brand-accent">care</span>
           </span>
         </Link>
-        <nav aria-label="Main navigation">{navigation}</nav>
+        <nav aria-label="Main navigation">
+          {navigation}
+          <AdminSidebarLink />
+        </nav>
         <div className="sidebar-account">
           <AccountMenu />
         </div>
         <Link className="sidebar-help" href="/help">
-          <Icon name="book" />
-          <T>Help & app guide</T>
+          {t("Help", "Msaada")}
         </Link>
       </aside>
       <div className="app-body">
@@ -88,16 +93,17 @@ function DashboardContent({ children }: { children: ReactNode }) {
           <span className="desktop-header-label">
             <T>Your farm, a little better cared for.</T>
           </span>
-          <LanguageSwitch />
-          <div className="mobile-profile">
-            <AccountMenu compact />
+          <div className="header-actions">
+            <Link href="/help" className="help-link">
+              {t("Help", "Msaada")}
+            </Link>
+            <div className="mobile-profile">
+              <AccountMenu compact />
+            </div>
+            <LanguageSwitch />
+            <PwaStatus />
           </div>
-          <Link href="/help" className="help-link" aria-label="App help">
-            <Icon name="book" />
-          </Link>
         </header>
-
-        <PwaStatus />
         {language === "sw" && (
           <p className="language-evidence-note">
             Kiolesura kinapatikana kwa Kiswahili. Rekodi za zamani, vyanzo na
@@ -122,6 +128,7 @@ function DashboardContent({ children }: { children: ReactNode }) {
       </div>
       <nav aria-label="Mobile navigation" className="mobile-navigation">
         {navigation}
+        <AdminSidebarLink />
       </nav>
     </div>
   );

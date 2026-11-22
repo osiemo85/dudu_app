@@ -45,6 +45,8 @@ class Account(BaseModel):
     name: str
     email: str
     role: Literal['user', 'admin']
+    county: str | None = None
+    area: str | None = None
 
 
 class SavePlanRequest(BaseModel):
@@ -95,6 +97,15 @@ class SavedPlanDetail(SavedPlan):
 
 class ProfileUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    county: str | None = Field(default=None, max_length=100)
+    area: str | None = Field(default=None, max_length=100)
+
+    @field_validator('county', 'area')
+    @classmethod
+    def optional_location(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return ' '.join(value.split()) or None
 
     @field_validator('name')
     @classmethod

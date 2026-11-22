@@ -203,5 +203,12 @@
   "Incorrect email or password.": "Barua pepe au nenosiri si sahihi.",
   "An account with this email already exists.": "Akaunti yenye barua pepe hii tayari ipo.",
   "Check your email and password (at least 8 characters).": "Kagua barua pepe na nenosiri lako (angalau herufi 8).",
-  "Could not connect.": "Imeshindwa kuunganisha."
+  "Could not connect.": "Imeshindwa kuunganisha.",
+  "Expert messages": "Ujumbe kwa wataalamu",
+  "Choose an expert and return to your saved conversations.": "Chagua mtaalamu na urudi kwenye mazungumzo yako yaliyohifadhiwa.",
+  "Scripted demo assistant": "Msaidizi wa majaribio mwenye majibu yaliyoandaliwa",
+  "FARM CHAT": "GUMZO LA SHAMBA",
+  "Chat with an expert": "Zungumza na mtaalamu",
+  "Choose an expert and keep the conversation going.": "Chagua mtaalamu na uendelee na mazungumzo.",
+  "Scripted guidance, separate from your expert conversations.": "Mwongozo wa majaribio wenye majibu yaliyoandaliwa, tofauti na mazungumzo yako na wataalamu."
 }

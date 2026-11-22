@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import dictionary from "@/lib/sw.json";
+import { Icon } from "./Icon";
 type Language = "en" | "sw";
 const translations: Record<string, string> = dictionary;
 const Context = createContext<{
@@ -55,25 +56,18 @@ export function T({ children }: { children: string }) {
   return <>{t(children)}</>;
 }
 export function LanguageSwitch() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   return (
-    <div className="language-switch" role="group" aria-label="Language / Lugha">
-      <button
-        type="button"
-        lang="en"
-        aria-pressed={language === "en"}
-        onClick={() => setLanguage("en")}
-      >
-        English
-      </button>
-      <button
-        type="button"
-        lang="sw"
-        aria-pressed={language === "sw"}
-        onClick={() => setLanguage("sw")}
-      >
-        Kiswahili
-      </button>
-    </div>
+    <label className="language-switch" title={t("Choose language", "Chagua lugha")}>
+      <select aria-label={t("Language", "Lugha")} value={language}
+        onChange={(event) => setLanguage(event.target.value === "sw" ? "sw" : "en")}>
+        <option value="en" lang="en">EN · English</option>
+        <option value="sw" lang="sw">SW · Kiswahili</option>
+      </select>
+      <span className="language-code" aria-hidden="true">
+        {language.toUpperCase()}
+        <Icon name="chevron" size={13} style={{ transform: "rotate(90deg)" }} />
+      </span>
+    </label>
   );
 }

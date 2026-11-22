@@ -56,4 +56,4 @@ from app.models.user_plans import ProfileUpdate
 
 @router.patch('/auth/me', response_model=Account, dependencies=[Depends(check_origin)])
 def update_profile(data: ProfileUpdate, account: Account = Depends(accounts.current_user)) -> Account:
-    return accounts.update_profile(account.id, data.name)
+    return accounts.update_profile(account.id, data)

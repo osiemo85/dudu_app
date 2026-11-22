@@ -181,6 +181,13 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
                 {t("Settings", "Mipangilio")}
                 <Icon name="chevron" size={16} />
               </Link>
+              {account?.role === "admin" && (
+                <Link onClick={close} href="/disease/admin">
+                  <Icon name="clipboard" size={19} />
+                  {t("Administration", "Usimamizi")}
+                  <Icon name="chevron" size={16} />
+                </Link>
+              )}
               {loading ? (
                 <p role="status">{t("Please wait…")}</p>
               ) : account ? (

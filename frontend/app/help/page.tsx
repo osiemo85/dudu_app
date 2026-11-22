@@ -39,7 +39,8 @@ export default function HelpPage() {
         <section className="panel">
           <h2>Install on your device</h2>
           <p>
-            On supported browsers, use the Install Duducare button when offered.
+            Use the download icon after the language controls in the top bar.
+            It opens the install prompt on supported browsers or shows instructions.
             On iPhone or iPad, open in Safari, then Share → Add to Home Screen.
             On a laptop, use your browser’s install option. Installation
             requires HTTPS or localhost and browser support.
@@ -53,8 +54,10 @@ export default function HelpPage() {
         <section className="panel">
           <h2>Understand the boundaries</h2>
           <p>
-            Farm chat uses scripted local replies. It does not connect you to
-            other farmers or a live advisor. Agricultural records are simulated
+            Farm chat saves private conversations with the expert you select.
+            Expert accounts use the demo’s administrator role; credentials and
+            response times are not verified. The separate demo assistant uses
+            scripted replies. Agricultural records are simulated
             examples. There is no connected live weather, pesticide registry, or
             supplier inventory.
           </p>
@@ -67,10 +70,12 @@ export default function HelpPage() {
       <div className="panel mt-5">
         <h2>Your account & data</h2>
         <p className="page-description">
-          You can explore crop health, planting, and chat without signing in.
-          Accounts allow access to your saved crop health cases. My farm notes
-          remain on this browser; export them for backup. Chat resets when you
-          leave or reload the page.
+          You can explore crop health, planting, and the scripted assistant without
+          signing in. Accounts provide saved cases, plans, optional profile
+          locations, and persistent expert conversations. Chat participants can
+          see your name and optional county/area. My farm notes remain on this
+          browser; export them for backup. Scripted assistant conversations reset
+          when you leave or reload the page.
         </p>
         <Link href="/account/login" className="button button-secondary mt-4">
           Account access

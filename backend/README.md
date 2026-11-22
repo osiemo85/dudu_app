@@ -281,3 +281,42 @@ key. Agent ranking remains on `/api/v1/planting/recommend`. Both location/season
 option endpoints are reachable. `/api/v1/saved-plans` exposes the existing
 ownership-checked snapshot and note services and uses no-store responses.
 See the root README for isolated SQLite setup and sample inputs for both modules.
+
+## Private expert conversations
+
+Run `uv run alembic upgrade head` and restart the backend for revision
+`20261122_02`. Seed-free startup applies the same additive messaging/profile
+schema for both database backends. No accounts or messages are seeded. Existing
+users and agricultural records are preserved. Production uses the configured
+Supabase PostgreSQL database; no new messaging provider is required.
+
+`PATCH /api/v1/auth/me` supports optional `county` and `area`, with blank strings
+normalized to null and omitted fields preserved. These are self-reported profile
+locations, not GPS or implicit advisory context. Email and role stay immutable.
+
+The authenticated `/api/v1/messaging` API provides `/experts`, `/unread`, and
+paginated `/conversations`. Start a conversation with an existing admin/expert
+account ID; list/send messages through `/conversations/{id}/messages`, and mark
+read through a known message with `/conversations/{id}/read`. The directory
+returns only names, role and optional county/area, not email addresses. Admin
+accounts remain the demo's expert-review accounts, without a credential or
+availability verification claim.
+
+All conversation operations check the current participant. An unrelated admin
+has no special right to read messages. Sends require a UUID `client_message_id`
+and plain text of 1–4,000 trimmed characters. Repeating the same ID/body returns
+the original message; reusing it with a different body returns 409. PostgreSQL
+serializes conversation sends so read watermarks cannot skip an earlier pending
+insert. Read progress advances monotonically through an existing message in the
+same conversation. Fetching history never marks it read. Responses are no-store;
+message bodies are not logged or sent to an AI provider.
+
+The UI polls threads and inboxes every five seconds and the navigation count
+every 15 seconds while visible. It refreshes on focus, and only marks the open
+thread read when visible/focused at the bottom. There is no offline send queue
+or browser push notification integration. The root README describes a two-login
+demo and test setup. Run the privacy/persistence/read-progress regression suite:
+
+```bash
+uv run python -m unittest discover -s tests -p 'test_messaging.py'
+```

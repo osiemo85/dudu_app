@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { MessagingProvider } from "@/components/MessagingProvider";
 import "./globals.css";
 import "./duducare.css";
 
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       style={{ colorScheme: "light" }}
     >
       <body className="min-h-full flex flex-col">
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider><MessagingProvider>{children}</MessagingProvider></LanguageProvider>
       </body>
     </html>
   );

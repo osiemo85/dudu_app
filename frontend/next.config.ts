@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
     agentFeedback: true,
+    // Photo analysis, evidence lookup and review can exceed the 30-second default.
+    proxyTimeout: 300_000,
   },
   cacheComponents: true,
   partialPrefetching: true,
@@ -17,6 +19,15 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async redirects() {
+    return [
+      {
+        source: "/disease/admin/disease_case",
+        destination: "/disease/admin/disease_cases",
+        permanent: false,
+      },
+    ];
   },
   async rewrites() {
     if (!backendUrl) {

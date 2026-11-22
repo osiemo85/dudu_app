@@ -163,3 +163,17 @@ both the plan preview and the saved snapshot.
   trigger, profile/settings navigation and logout.
 - `/profile` and `components/ProfilePage.tsx`: authenticated account editing.
   `/proflile` redirects to `/profile`; `/settings` exposes device language settings.
+
+## Persistent expert messaging
+
+- `data_access/messaging_schema.py` and Alembic `20261122_02`: additive profile
+  county/area fields and private conversation/message schema, with no seed accounts.
+- `models/messaging.py`, `services/messaging.py`, `data_access/messaging_repository.py`,
+  `api/v1/messaging.py`: typed participant-only messaging, retry deduplication,
+  history pagination and explicit read watermarks.
+- `components/ExpertChat.tsx`, `app/chat/messaging.css`: expert picker, inbox,
+  conversation history and replies at `/chat`.
+- `components/MessagingProvider.tsx`, `lib/messaging.ts`: shared unread count and
+  typed browser contract; `NavigationLink.tsx` renders accessible icon badges.
+- The original `FarmChat.tsx` scripted assistant remains at `/chat/assistant`.
+  It does not share or analyse private expert conversations.

@@ -27,8 +27,8 @@ const tools: {
   {
     href: "/chat",
     icon: "chat",
-    title: "Ask your farm assistant",
-    text: "Talk through a question, one step at a time.",
+    title: "Chat with an expert",
+    text: "Choose an expert and keep the conversation going.",
     tone: "blue",
   },
   {

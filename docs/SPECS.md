@@ -229,12 +229,22 @@ excludes them. Saved snapshots retain the details available when saved.
 
 The farmer interface is branded Duducare and follows the root `index.html`
 reference: cream surfaces, forest green and harvest accents, compact cards,
-five labeled mobile tabs and an adaptive laptop sidebar. Disease and planting
+five mobile navigation icons and an adaptive laptop sidebar. Administrators have
+an additional Administration icon in the mobile bar. Mobile labels appear on
+hover or keyboard focus, and all icons retain accessible names. Disease and planting
 remain independently reachable without login. Personal histories still require
 an authenticated account; admin operations retain their server-side role checks.
+The shared header uses a compact EN/SW language dropdown with full language names
+in its options and a text Help link. It places an accessible download icon after
+the language selector as its final action. It opens the browser install prompt when available and otherwise
+shows device installation guidance; there is no install promotion banner.
+Administrators have a sidebar link to `/disease/admin` and the same destination
+in the mobile account menu. The crop-health workspace uses compact database
+navigation, searchable records, review-status filters, and mobile record cards.
 
-The farm chat is a **scripted demo assistant**, not a live model, expert, or
-farmer messaging service. It uses editable local replies, asks for missing
+Farm chat at `/chat` provides authenticated, persistent conversations with a
+selected expert account, as specified in section 14. The separate **scripted
+demo assistant** at `/chat/assistant` uses editable local replies, asks for missing
 location/season before discussing local planting, redirects diagnostic and
 chemical questions safely, and returns the shared provenance/uncertainty fields.
 It sends only the current question and selected area/season; it stores no chat
@@ -278,7 +288,7 @@ Referral means a recommended action, not an appointment or message actually sent
 
 Saving requires a signed-in account and explicit storage consent. Animal cases
 store the observation and result, with ownership checked for list and detail
-access. Account name changes use authenticated, origin-checked PATCH /auth/me;
+access. Account name and optional county/area changes use authenticated, origin-checked PATCH /auth/me;
 email and role cannot be changed through the profile form. A circle-only avatar
 in the sidebar footer opens a compact, anchored account menu with the account
 name at the top and Profile, Settings and Log out actions. The sidebar has no
@@ -319,3 +329,47 @@ object without masking the original error; failed cleanup requires reconciliatio
 Existing local photos require an explicit migration and are not read from disk in
 production. Animal photos remain device-only previews. This persistence change
 does not turn simulated agricultural evidence into a live or verified advisory.
+
+## 14. Expert messaging and optional profile location
+
+`/profile` saves a name and optional manually entered county/area. Blank optional
+fields clear the saved value; omitted fields retain their values. Email and role
+remain immutable through this form. These locations are self-reported, visible to
+chat participants and, for experts, in the expert picker. They do not establish
+GPS verification or silently replace the explicit context of an advisory request.
+
+`/chat` requires login and lets users select an expert from database accounts
+with the existing `admin` role, matching the demo's expert-review login. The
+picker exposes names and optional county/area, not email addresses. Credentials,
+availability and response times are not verified. No sample experts or messages
+are created by startup or migration. A separate scripted assistant remains
+available without login at `/chat/assistant` and retains its existing limits.
+
+Each user/expert pair has a persistent conversation. Only its two participants
+may list, read, send or advance read progress; administrator status alone does
+not permit reading unrelated conversations. Both sides can return after logout,
+reload or restart and reply in the same conversation. Messages are plain text,
+limited to 4,000 characters, stored in the configured database, never logged or
+cached by the browser service worker. They remain human-supplied messages, not
+validated agricultural evidence. Sending is an explicit user action; failed sends
+retain the draft and reuse a client message ID on retry to prevent duplicates.
+
+The API under `/api/v1/messaging/` provides the expert directory, paginated
+conversations and messages, send/read actions, and unread totals. Reads are
+explicit watermarks through a known message in that conversation, advance only
+forward, and never clear messages that arrived later. Fetching messages alone
+does not mark them read. The UI advances progress for the open conversation when
+the tab is visible and focused and the reader reaches the bottom. Unread incoming
+messages in other conversations remain unread.
+
+A numeric badge above the Farm chat icon appears in both sidebar and mobile
+navigation, with per-conversation counts in the inbox. Totals count unread
+incoming messages. The badge checks every 15 seconds while visible; the inbox
+and open thread check every five seconds, and focus/online events refresh them.
+This is polling, without browser push notifications or offline message queuing.
+Account changes reset the badge and cancel obsolete requests.
+
+Schema revision `20261122_02` adds optional profile columns, private conversation
+and message tables and indexes without replacing existing data. Seed-free startup
+applies the same additive upgrades for SQLite and PostgreSQL. Saved location and
+message persistence do not create a live weather, outbreak or pesticide service.

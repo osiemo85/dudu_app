@@ -9,12 +9,16 @@ type Account = {
   name: string;
   email: string;
   role: "user" | "admin";
+  county: string | null;
+  area: string | null;
 };
 
 export function ProfilePage() {
   const { t } = useLanguage();
   const [account, setAccount] = useState<Account | null>(null);
   const [name, setName] = useState("");
+  const [county, setCounty] = useState("");
+  const [area, setArea] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,6 +38,8 @@ export function ProfilePage() {
         if (active) {
           setAccount(user);
           setName(user?.name || "");
+          setCounty(user?.county || "");
+          setArea(user?.area || "");
           setError("");
         }
       } catch {
@@ -57,13 +63,15 @@ export function ProfilePage() {
       const response = await fetch("/api/v1/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), county: county.trim() || null, area: area.trim() || null }),
         signal: AbortSignal.timeout(10000),
       });
       if (!response.ok) throw Error();
       const user: Account = await response.json();
       setAccount(user);
       setName(user.name);
+      setCounty(user.county || "");
+      setArea(user.area || "");
       setSaved(true);
       window.dispatchEvent(new Event("account-changed"));
     } catch {
@@ -107,6 +115,20 @@ export function ProfilePage() {
                 readOnly
               />
             </label>
+            <fieldset className="profile-location-fields">
+              <legend>{t("Location (optional)", "Eneo (si lazima)")}</legend>
+              <p className="page-description">{t("Manually entered. Shared with your chat participants; expert locations also appear in the expert directory. Confirm location separately when requesting advice.", "Limeingizwa mwenyewe. Litaonekana kwa watu unaozungumza nao; maeneo ya wataalamu pia yataonekana kwenye orodha yao. Thibitisha eneo unapohitaji ushauri.")}</p>
+              <div className="form-grid">
+                <label className="field-label">{t("County")}
+                  <input className="field" value={county} autoComplete="address-level1" maxLength={100} disabled={busy}
+                    onChange={(event) => { setCounty(event.target.value); setSaved(false); }} />
+                </label>
+                <label className="field-label">{t("Area")}
+                  <input className="field" value={area} autoComplete="address-level2" maxLength={100} disabled={busy}
+                    onChange={(event) => { setArea(event.target.value); setSaved(false); }} />
+                </label>
+              </div>
+            </fieldset>
             <div className="account-page-actions">
               <button
                 className="button button-primary"

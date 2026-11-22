@@ -8,7 +8,8 @@ export function RecordModal({ title, onClose, children }: { title: string; onClo
   useEffect(() => {
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
-    return () => { if (dialog?.open) dialog.close(); };
+    // Removing the element closes it on unmount. Calling close() in effect
+    // cleanup queues a close event during Strict Mode's setup/cleanup check.
   }, []);
 
   return (
