@@ -50,32 +50,44 @@ Existing disk photos are not automatically uploaded; production will show those
 legacy photos as unavailable. Animal photos remain device-only previews.
 
 The integration is covered with mocked Storage HTTP responses. Verify the target
-project before deployment: run the seed/migrations, create an administrator,
+project before deployment: run schema migrations, create an administrator,
 submit a crop photo with expert-review consent, confirm the bucket object exists,
 then open it from the admin case and outbreak screens. Check that a signed-out
 photo request is denied and a submission without consent creates no object.
 Also run the independent planting sample in the root README. Automated tests do
 not contact a real Supabase project or validate deployment credentials.
 
-Run the schema and fixture seed manually before deployment, then apply tracked
-Alembic migrations. The API does not connect to any live agricultural source.
+## Empty database and manual disease testing
+
+Startup creates empty tables using `app/data_access/schema.py`, bundled with the
+backend Python source. It never needs `/var/data/seed.sql` or any other local
+fixture file. Revision `20261122_01` creates the same empty schema when running
+`uv run alembic upgrade head`. Existing records and contributor edits remain
+intact. Migrations and default startup insert no agricultural sample records.
+
+Keep `LOAD_DEMO_SEED=false` (the default). Enabling it is rejected with
+`ENV=prod` or on Vercel. The five legacy fixture SQL files under `data/` are
+ignored by Git and retained locally only. A fresh checkout does not contain
+them. The optional local loader/exporter is not part of hosted setup.
+
+After creating an administrator with `uv run python scripts/create_admin.py`,
+follow the [disease UI test guide](../docs/DISEASE_UI_TEST_GUIDE.md) to add dated,
+simulated sources, context, symptoms, and optional historical/directory records
+through the UI. The guide requires no SQL inserts or seed uploads.
+
+In Vercel, deploy the backend from the `backend` Root Directory. Set its
+`FRONTEND_URL=https://dudu-app-f.vercel.app` and the production Supabase values
+above. Set the frontend project's
+`BACKEND_URL=https://dudu-app-nine.vercel.app` and redeploy it. Health must
+return JSON with HTTP 200; signed-out `/api/v1/auth/me` must return JSON 401.
+
+Run the seed-free manual-entry flow checks:
 
 ```bash
-cd backend
-uv run python scripts/export_supabase_seed.py > ../data/supabase_seed.sql
+uv run python -m unittest discover -s tests -p test_manual_disease.py -v
 ```
 
-Open Supabase Dashboard → **SQL Editor**, paste the generated file, and run it.
-The seed is additive and does not delete existing rows.
-
-Startup and the SQL export advance PostgreSQL identity sequences immediately
-after inserting explicit fixture IDs. This prevents later source records from
-being skipped on ID conflicts, which previously left weather `source_id` values
-missing. If startup failed with that error, restart the backend with the updated
-code; no database reset or nullable source column is needed. For manual setup,
-regenerate and rerun the SQL export.
-
-To run the PostgreSQL seed and connection regression tests, set `TEST_POSTGRES_DATABASE_URL`
+To run PostgreSQL connection and optional local-fixture tests, set `TEST_POSTGRES_DATABASE_URL`
 to a test database, then run:
 
 ```bash
@@ -89,14 +101,14 @@ The PostgreSQL adapter reads inserted IDs from `RETURNING` rows. Session rows
 use a token key and have no generated ID; registration and login must not call
 PostgreSQL's session-wide `LASTVAL()` for these inserts.
 
-Then run:
+Apply tracked migrations:
 
 ```bash
 uv run alembic upgrade head
 ```
 
 Alembic tracks structural schema changes in `backend/alembic/versions/`. The
-editable simulated fixtures remain in `data/`; do not use migrations to replace
+optional private simulated fixtures remain ignored in `data/`; do not use migrations to replace
 contributor-edited fixture data. For a new migration, use
 `uv run alembic revision -m "describe the change"`, add explicit portable SQL or
 Alembic operations, then run `uv run alembic upgrade head` against a copy of the
@@ -136,10 +148,10 @@ rejected provider requests. Server logs show the exception type and HTTP status,
 without printing provider error bodies or credentials. A running backend must
 be restarted after changing `.env`.
 
-With Supabase configured, run the exported seed manually to create the
-PostgreSQL schema and fixtures. An explicit `sqlite:///...` URL is supported
+With Supabase configured, startup/migrations create the empty PostgreSQL schema.
+An explicit `sqlite:///...` URL is supported
 only for local testing; there is no SQLite default. Both stores are editable through `/api/v1/admin/*`
-or the admin UI. Seed records are simulated and are not live
+or the admin UI. Manually entered test records are simulated and are not live
 government, outbreak, weather, supplier, or regulatory data.
 
 ## Nearby agrovet directory
@@ -156,8 +168,8 @@ proxies browser `/api/v1/*` requests to it. Configure `FRONTEND_URL` in the
 backend environment with the allowed browser origin. Set these in the respective
 deployment environments; the backend deliberately has no URL fallback.
 
-The planting API is currently not registered. Existing planting records are kept
-in the database without being exposed by the application.
+The independent planting API remains available. Missing location, season, or
+crop evidence produces a clarification rather than fabricated advice.
 
 ## Expert-review observations
 
@@ -193,16 +205,13 @@ failures, and the independent planting endpoint. No test sends data to a live pr
 
 ## Planting test tables
 
-Startup also applies `data/planting_tables.sql` to new and existing databases. It
-adds counties, areas, varieties, area/season suitability, management plans and
-stages, inputs, suppliers, supplier varieties, and seasonal climate tables. The
-existing `seasons` table remains county-specific and `crops` retains its existing
-fields; both have additional fields for the requested model. The new tables are
-editable in SQLite and are separate from the existing planting advisory data flow.
-The SQL fixtures are fictional, dated 2025-01-15, and linked to a simulated
-source; the manually supplied area coordinates, climate values, supplier listing
-and management steps are for testing only. They do not establish actual suitability,
-weather, prices, stock, or input rates. Restart the backend to initialize them.
+Schema-only startup creates empty counties, areas, varieties, suitability,
+management, supplier, and climate tables. Existing manually entered records
+remain editable. No planting records are inserted in hosted deployments. The
+private `data/planting_tables.sql` loader is available only with an explicit
+local `LOAD_DEMO_SEED=true` and a complete local fixture set. Fixture-dependent
+legacy tests explicitly opt in and skip when those ignored files are absent.
+The disease-only manual guide is the default fresh-checkout test path.
 
 The planting endpoint now uses the OpenAI Agents SDK when `OPENAI_API_KEY` is
 configured. It calls two read-only tools: an area/season crop lookup and a
@@ -238,14 +247,14 @@ spots and concentric rings” can use its local fallback without an OpenAI key.
 Planting recommendations require `OPENAI_API_KEY` as described above.
 
 Accounts, salted password hashes, opaque session hashes, plan snapshots and notes
-are stored in the local SQLite database. Precise GPS coordinates are not saved in
+are stored in the configured PostgreSQL or explicit local SQLite database. Precise GPS coordinates are not saved in
 plan snapshots. Sessions use HttpOnly, SameSite cookies and expire after seven
 days; use the same hostname (for example `localhost`) for frontend and backend so
 the browser can send the cookie. This is a local demo: email verification, password
 recovery, rate limiting and production deployment hardening are not implemented.
-The admin demo remains unauthenticated and the database is local, so do not expose
-this setup publicly or use real sensitive information. Restart the backend to
-create the new tables. Model trace export and response storage remain disabled.
+The admin interface requires an administrator account. Restart the backend to
+create empty tables; no test records are imported. Model trace export and
+response storage remain disabled.
 
 ### Editing detailed planting plans
 

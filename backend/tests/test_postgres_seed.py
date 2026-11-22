@@ -30,7 +30,7 @@ class PostgresTranslationTests(unittest.TestCase):
         self.assertIn("VALUES ('generated') ON CONFLICT DO NOTHING", statements[2])
 
 
-@unittest.skipUnless(os.getenv("TEST_POSTGRES_DATABASE_URL") and psycopg,
+@unittest.skipUnless(os.getenv("TEST_POSTGRES_DATABASE_URL") and psycopg and settings.seed_path.is_file(),
                      "Set TEST_POSTGRES_DATABASE_URL for PostgreSQL fixture regression tests.")
 class PostgresSeedTests(unittest.TestCase):
     def setUp(self):

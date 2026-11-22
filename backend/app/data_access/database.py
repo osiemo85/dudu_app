@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import unquote
 
 from app.core.config import settings
+from app.data_access.schema import SCHEMA_SQL, SCHEMA_INDEX_SQL, SCHEMA_UPGRADES
 
 try:
     import psycopg
@@ -16,7 +17,9 @@ except ImportError:  # Raised with a clear message if DATABASE_URL is configured
     dict_row = None
 
 
-IntegrityError = sqlite3.IntegrityError
+# Both backends may be exercised in one process (for example in integration
+# tests); selecting a connection must not change which duplicate errors callers catch.
+IntegrityError = (sqlite3.IntegrityError, psycopg.IntegrityError) if psycopg else sqlite3.IntegrityError
 
 
 def _database_kind() -> str:
@@ -156,12 +159,41 @@ class _PostgresConnection:
         self._connection.close()
 
 
+def _initialize_schema(connection: Any, *, postgres: bool) -> None:
+    """Create/extend empty tables without reading or inserting local fixtures."""
+    if postgres:
+        tables = {row[0] for row in connection.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema()"
+        )}
+    else:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "weather_samples" in tables and "weather_forecasts" not in tables:
+        connection.execute("ALTER TABLE weather_samples RENAME TO weather_forecasts")
+    translate = _postgres_script if postgres else _split_sql
+    for statement in translate(SCHEMA_SQL):
+        connection.execute(statement)
+    for table, columns in SCHEMA_UPGRADES.items():
+        if postgres:
+            existing = {row[0] for row in connection.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=%s", (table,)
+            )}
+        else:
+            existing = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+        for column, definition in columns.items():
+            if column not in existing:
+                connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+    for statement in translate(SCHEMA_INDEX_SQL):
+        connection.execute(statement)
+
+
 def _initialize_postgres() -> None:
     if psycopg is None:
         raise RuntimeError("DATABASE_URL is set but psycopg is unavailable. Run `uv sync` in backend.")
-    global IntegrityError
-    IntegrityError = psycopg.IntegrityError
     with psycopg.connect(settings.database_url, autocommit=False) as connection:
+        if not settings.load_demo_seed:
+            _initialize_schema(connection, postgres=True)
+            connection.commit()
+            return
         # Supabase is storage only. These fixtures remain simulated, editable data.
         for path in (settings.seed_path,):
             for statement in _postgres_script(path.read_text(encoding="utf-8")):
@@ -221,6 +253,10 @@ def initialize_database() -> None:
         Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(sqlite_path)
     try:
+        if not settings.load_demo_seed:
+            _initialize_schema(connection, postgres=False)
+            connection.commit()
+            return
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if "weather_samples" in tables and "weather_forecasts" not in tables:
             connection.execute("ALTER TABLE weather_samples RENAME TO weather_forecasts")
@@ -362,8 +398,6 @@ def database() -> Iterator[Any]:
     if using_postgres():
         if psycopg is None:
             raise RuntimeError("DATABASE_URL is set but psycopg is unavailable. Run `uv sync` in backend.")
-        global IntegrityError
-        IntegrityError = psycopg.IntegrityError
         raw_connection = psycopg.connect(settings.database_url, autocommit=False)
         connection = _PostgresConnection(raw_connection)
         try:

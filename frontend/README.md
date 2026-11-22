@@ -30,9 +30,36 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Deploy FastAPI separately and confirm that its public HTTPS origin serves
+`/api/v1/health`. In the Vercel frontend project's **Settings → Environment
+Variables**, set `BACKEND_URL` to that origin, without `/api/v1` (for example,
+`https://dudu-app-nine.vercel.app`). Apply it to Production and any Preview
+environments you use. Set the project's Root Directory to `frontend`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Set the backend's `FRONTEND_URL` to the exact frontend origin, such as
+`https://dudu-app-f.vercel.app`, for origin checks on registration and login.
+Keep the existing `/api/v1/*` rewrite: it forwards requests and session cookies
+through the frontend origin. Browser calls to the frontend domain are expected.
+`BACKEND_URL` is server-only and must never contain a database URL or Supabase's
+project API URL; it points to this project's FastAPI deployment.
+
+Redeploy the frontend after changing `BACKEND_URL`, because the rewrite is
+generated during the build. A local `.env.local` setting does not configure
+Vercel's hosted environment. Hosted builds reject missing, localhost, and
+common private-address targets with an explicit configuration error.
+
+An API 404 with Vercel's `DNS_HOSTNAME_RESOLVED_PRIVATE` error means the rewrite
+target resolves to a private address. A missing rewrite can also produce an
+HTML 404, which is not FastAPI JSON. Check the deployment variable and rebuild;
+changing JSON parsing alone cannot restore the backend connection.
+
+After deployment, `/api/v1/health` on the frontend must return JSON, and
+`/api/v1/auth/me` must return JSON with HTTP 401 when signed out. Register,
+reload to confirm the session, log out, and log in again. Also check both
+the disease and planting sample flows in the root README.
+
+Run `npm run test:api` to check backend-target validation and account response
+handling, including HTML/text proxy errors and FastAPI validation failures.
 
 
 Duducare provides Home, Planting, Crop health, Farm chat, and My farm navigation.

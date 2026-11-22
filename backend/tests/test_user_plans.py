@@ -10,15 +10,19 @@ from app.main import app
 from app.data_access.database import database
 
 
+@unittest.skipUnless(settings.seed_path.is_file(), "Optional local fixtures are not present; run test_manual_disease.py for seed-free coverage.")
 class UserPlanTests(unittest.TestCase):
     def setUp(self):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.enterContext(patch('app.data_access.database.settings', replace(settings, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}")))
+        self.enterContext(patch('app.data_access.database.settings', replace(settings, load_demo_seed=True, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}")))
         self.client = self.enterContext(TestClient(app))
 
     def register(self, email):
-        return self.client.post('/api/v1/auth/register', json={'email': email, 'password': 'correct-password'})
+        return self.client.post('/api/v1/auth/register', json={
+            'name': 'Test farmer', 'email': email, 'password': 'correct-password',
+            'password_confirmation': 'correct-password',
+        })
 
     def test_save_snapshot_and_notes_are_private_and_persist_across_login(self):
         self.assertEqual(self.client.get('/api/v1/saved-plans').status_code, 401)

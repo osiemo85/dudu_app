@@ -119,7 +119,7 @@ def list_records(
         values.append(filter_value)
     where = f" WHERE {' AND '.join(conditions)}" if conditions else ""
     with database() as connection:
-        total = connection.execute(f"SELECT COUNT(*) FROM {table}{where}", values).fetchone()[0]
+        total = connection.execute(f"SELECT COUNT(*) AS total FROM {table}{where}", values).fetchone()["total"]
         records = [dict(row) for row in connection.execute(f"SELECT * FROM {table}{where} ORDER BY id DESC LIMIT ? OFFSET ?", (*values, page_size, (page - 1) * page_size)).fetchall()]
         if table == "disease_cases":
             for record in records:

@@ -1,0 +1,9 @@
+.env
+.venv/
+tests/
+**/__pycache__/
+data/seed.sql
+data/supabase_seed.sql
+data/planting_tables.sql
+data/management_enrichment.sql
+data/management_input_examples.sql

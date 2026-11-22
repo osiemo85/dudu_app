@@ -9,11 +9,12 @@ from app.data_access.database import initialize_database
 from app.main import app
 
 
+@unittest.skipUnless(settings.seed_path.is_file(), "Optional local fixtures are not present; run test_manual_disease.py for seed-free coverage.")
 class DuducareTests(unittest.TestCase):
     def setUp(self):
         folder = TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        self.enterContext(patch('app.data_access.database.settings', replace(settings, database_url=f"sqlite:///{Path(folder.name) / 'demo.db'}")))
+        self.enterContext(patch('app.data_access.database.settings', replace(settings, load_demo_seed=True, database_url=f"sqlite:///{Path(folder.name) / 'demo.db'}")))
         initialize_database()
         self.client = TestClient(app)
 

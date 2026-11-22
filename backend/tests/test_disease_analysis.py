@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from openai import AuthenticationError, AsyncOpenAI
 
 from app.core.config import settings
+from app.data_access.database import database
 from app.main import app
 from app.services.disease_agent import AgentResult
 
@@ -24,15 +25,23 @@ PAYLOAD = {
     "next_actions": ["Ask an extension officer to confirm the cause."],
 }
 
+@unittest.skipUnless(settings.seed_path.is_file(), "Optional local fixtures are not present; run test_manual_disease.py for seed-free coverage.")
 class DiseaseAnalysisTests(unittest.TestCase):
     def setUp(self) -> None:
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        database_settings = replace(settings, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}", outbreak_evidence_dir=Path(directory.name) / "images")
+        database_settings = replace(settings, load_demo_seed=True, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}", outbreak_evidence_dir=Path(directory.name) / "images")
         self.enterContext(patch("app.services.outbreak_recorder.settings", database_settings))
         self.enterContext(patch("app.services.admin_service.settings", database_settings))
         self.enterContext(patch("app.data_access.database.settings", database_settings))
         self.client = self.enterContext(TestClient(app))
+        response = self.client.post('/api/v1/auth/register', json={
+            'name': 'Test admin', 'email': 'admin@example.com', 'password': 'test-admin-123',
+            'password_confirmation': 'test-admin-123',
+        })
+        self.assertEqual(response.status_code, 201)
+        with database() as connection:
+            connection.execute("UPDATE users SET role='admin' WHERE id=?", (response.json()['id'],))
 
     def identify(self, **data):
         return self.client.post(
@@ -114,19 +123,21 @@ class DiseaseAnalysisTests(unittest.TestCase):
             requests.append(payload)
             self.assertEqual(request.url.path, "/v1/responses")
             index = len(requests)
-            if index == 1:
+            if index == 2:
                 output = [{"type": "function_call", "id": "fc_1", "call_id": "call_1",
                            "name": "lookup_disease_candidates",
-                           "arguments": json.dumps({"symptoms": "brown spots concentric rings", "affected_part": "leaf"})}]
-            elif index == 2:
+                           "arguments": json.dumps({"selected_observations": ["brown spots", "concentric rings"]})}]
+            elif index == 3:
                 output = [{"type": "function_call", "id": f"fc_{i}", "call_id": f"call_{i}",
                            "name": name, "arguments": json.dumps({"disease_ids": [1]})}
                           for i, name in enumerate(["lookup_local_outbreak_history", "lookup_supported_treatments"], 2)]
             else:
-                if index > 3 and fail_report:
+                if index > 5 and fail_report:
                     return httpx.Response(401, json={"error": {"message": "secret-test-value", "type": "authentication_error"}})
-                final = ({**PAYLOAD, "selected_disease_ids": selected_ids, "image_observations": ["Brown leaf spots"]}
-                         if index == 3 else {"summary": "Possible leaf disease; needs field review.",
+                final = ({"photo_description": "Brown leaf spots with rings.", "symptoms": ["brown spots", "concentric rings"]}
+                         if index == 1 else {"selected_observations": ["brown spots", "concentric rings"], "candidate_ids": [1]}
+                         if index == 4 else {**PAYLOAD, "selected_disease_ids": selected_ids, "image_observations": ["Brown leaf spots"]}
+                         if index == 5 else {"summary": "Possible leaf disease; needs field review.",
                          "evidence_gaps": ["Symptom onset is unknown."], "follow_up_questions": ["When did symptoms start?"],
                          "review_priority": "routine", "priority_reason": "Extent is not known."})
                 output = [{"type": "message", "id": f"msg_{index}", "role": "assistant", "status": "completed",
@@ -157,7 +168,7 @@ class DiseaseAnalysisTests(unittest.TestCase):
         self.assertEqual(body["analysis"]["status"], "completed")
         self.assertTrue(body["analysis"]["image_analyzed"])
         self.assertTrue(body["candidates"])
-        self.assertEqual(len(requests), 3)
+        self.assertEqual(len(requests), 5)
         image_part = requests[0]["input"][0]["content"][1]
         self.assertEqual(image_part["type"], "input_image")
         self.assertEqual(base64.b64decode(image_part["image_url"].split(",", 1)[1]), IMAGE)
@@ -167,14 +178,14 @@ class DiseaseAnalysisTests(unittest.TestCase):
         self.assertEqual(self.cases(), [])
         self.assertEqual(body["recording"]["status"], "not_requested")
 
-    def test_consent_saves_full_history_and_two_distinct_agent_runs(self) -> None:
+    def test_consent_saves_full_history_and_four_distinct_agent_runs(self) -> None:
         body, requests = self.sdk_identify(save_for_expert_review="true", symptoms="brown leaf spots")
-        self.assertEqual(len(requests), 4)
+        self.assertEqual(len(requests), 6)
         self.assertEqual(body["recording"]["status"], "saved")
         case = self.cases()[0]
         runs = json.loads(case["agent_runs_json"])
-        self.assertEqual(len({run["agent_id"] for run in runs}), 2)
-        self.assertEqual(len({run["run_id"] for run in runs}), 2)
+        self.assertEqual(len({run["agent_id"] for run in runs}), 4)
+        self.assertEqual(len({run["run_id"] for run in runs}), 4)
         self.assertTrue(all(run["status"] == "completed" for run in runs))
         self.assertEqual(case["workflow_id"], body["workflow_id"])
         self.assertEqual(case["expert_approval"], "pending")
@@ -195,8 +206,8 @@ class DiseaseAnalysisTests(unittest.TestCase):
         from app.data_access.database import initialize_database
         initialize_database()
         self.assertEqual(self.cases()[0]["result_json"], case["result_json"])
-        rejected = self.client.put(f"/api/v1/admin/crop-health/outbreaks/{case['outbreak_id']}",
-                                   json={"values": {"expert_approval": "rejected"}})
+        rejected = self.client.post(f"/api/v1/admin/crop-health/outbreaks/{case['outbreak_id']}/review",
+                                   json={"decision": "rejected", "comment": "UI test; no validated diagnosis."})
         self.assertEqual(rejected.status_code, 200)
         self.assertEqual(self.cases()[0]["expert_approval"], "rejected")
         self.assertNotIn(case["outbreak_id"], [row["id"] for row in repository.get_outbreak_context("Kiambu", [1])])
@@ -211,7 +222,7 @@ class DiseaseAnalysisTests(unittest.TestCase):
             body, _ = self.sdk_identify(save_for_expert_review="true", fail_report=True)
         self.assertEqual(body["analysis"]["status"], "completed")
         self.assertEqual(body["recording"]["status"], "saved")
-        self.assertEqual(body["agent_runs"][1]["status"], "failed")
+        self.assertEqual(body["agent_runs"][3]["status"], "failed")
         self.assertIsNone(body["officer_report"])
         self.assertNotIn("secret-test-value", json.dumps(body) + json.dumps(self.cases()) + str(logs.output))
 
@@ -220,7 +231,7 @@ class DiseaseAnalysisTests(unittest.TestCase):
         self.assertEqual(body["analysis"]["status"], "unavailable")
         self.assertEqual(body["candidates"], [])
         self.assertIsNone(self.cases()[0]["outbreak_id"])
-        self.assertEqual(body["agent_runs"][0]["status"], "failed")
+        self.assertEqual(body["agent_runs"][2]["status"], "failed")
 
     def test_no_match_is_saved_as_clarification_without_outbreak(self) -> None:
         body, _ = self.sdk_identify(save_for_expert_review="true", selected_ids=[])

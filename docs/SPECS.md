@@ -114,6 +114,13 @@ Accept when:
 
 ## 6. Simulated data, sources, and validation
 
+Default startup and tracked migrations create schema only, with no agricultural
+sample records. Local seed/fixture SQL files are ignored by Git and are not
+required or loaded in hosted deployments. `LOAD_DEMO_SEED=true` is an explicit
+local-only option and is rejected in production and on Vercel. Manual disease
+test records are entered through the administrator UI using
+`docs/DISEASE_UI_TEST_GUIDE.md`. Existing database records survive restarts.
+
 Seed records should be illustrative, editable, dated, and geographically explicit. Each data group should define its source/provenance, evidence status, and limitations. Historical/sample data may support interface and decision-rule design; it must not be displayed as live advice.
 
 Potential information custodians to investigate include relevant Kenyan agricultural and regulatory government bodies, county extension services, research and agricultural organizations, agro-vets/input suppliers, and farmer/community knowledge holders. This list identifies stakeholders to consult, not confirmed data providers or endorsements. Discovery should establish:

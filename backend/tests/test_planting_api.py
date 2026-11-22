@@ -15,14 +15,22 @@ from app.data_access.database import database, initialize_database
 from app.main import app
 
 
+@unittest.skipUnless(settings.seed_path.is_file(), "Optional local fixtures are not present; run test_manual_disease.py for seed-free coverage.")
 class PlantingApiTests(unittest.TestCase):
     def setUp(self):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        test_settings = replace(settings, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}", openai_api_key="test-key")
+        test_settings = replace(settings, load_demo_seed=True, database_url=f"sqlite:///{Path(directory.name) / 'test.db'}", openai_api_key="test-key")
         self.enterContext(patch("app.data_access.database.settings", test_settings))
         self.enterContext(patch("app.services.planting_agent.settings", test_settings))
         self.client = self.enterContext(TestClient(app))
+        response = self.client.post('/api/v1/auth/register', json={
+            'name': 'Test admin', 'email': 'admin@example.com', 'password': 'test-admin-123',
+            'password_confirmation': 'test-admin-123',
+        })
+        self.assertEqual(response.status_code, 201)
+        with database() as connection:
+            connection.execute("UPDATE users SET role='admin' WHERE id=?", (response.json()['id'],))
 
     def test_agent_uses_both_tools_and_returns_ranked_crops(self):
         requests = []

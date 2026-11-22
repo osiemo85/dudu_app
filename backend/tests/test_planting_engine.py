@@ -10,13 +10,14 @@ from app.models.planting import PlantingRequest
 from app.services.planting_engine import recommend_planting
 
 
+@unittest.skipUnless(settings.seed_path.is_file(), "Optional local fixtures are not present; run test_manual_disease.py for seed-free coverage.")
 class PlantingEngineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.directory = TemporaryDirectory()
         cls.settings_patch = patch(
             "app.data_access.database.settings",
-            replace(settings, database_url=f"sqlite:///{Path(cls.directory.name) / 'test.db'}"),
+            replace(settings, load_demo_seed=True, database_url=f"sqlite:///{Path(cls.directory.name) / 'test.db'}"),
         )
         cls.settings_patch.start()
         initialize_database()

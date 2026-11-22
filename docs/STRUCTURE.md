@@ -105,7 +105,12 @@ This document describes the intended demo layout. Some directories may not exist
 - `backend/app/core/config.py`: `ENV=prod` resolves `SUPABASE_DATABASE_URL` for all
   repositories and Alembic and requires the Supabase HTTPS URL, secret key and bucket.
 - `backend/app/data_access/disease_repository.py`: atomic case and pending observation writes.
-- `data/seed.sql`: additive `disease_cases` schema; existing SQLite records remain intact.
+- `backend/app/data_access/schema.py`: bundled schema-only bootstrap for both
+  database backends, with no external seed-file dependency or sample records.
+- `data/seed.sql` and legacy fixture SQL: optional local files ignored by Git;
+  loaded only with local `LOAD_DEMO_SEED=true`, never in hosted deployments.
+- `docs/DISEASE_UI_TEST_GUIDE.md`: administrator UI entries and expected results
+  for seed-free disease testing.
 - Crop-health admin `disease_cases`: full evidence, photos, agent identities/runs and review
   fields. Other modules remain independently reachable and usable.
 

@@ -20,21 +20,19 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
-In development (`ENV=dev`), FastAPI requires `DATABASE_URL` and uses Supabase PostgreSQL when given its
-PostgreSQL URL. Generate the manual seed, then paste it into Supabase SQL Editor:
-
-```bash
-cd backend
-uv run python scripts/export_supabase_seed.py > ../data/supabase_seed.sql
-```
+FastAPI requires an explicit database URL. Startup creates empty tables and
+applies additive schema upgrades from bundled Python code; it does not read or
+insert agricultural seed data. PostgreSQL uses `DATABASE_URL` in development.
+See the [disease UI test guide](docs/DISEASE_UI_TEST_GUIDE.md) for sample records
+to add manually through the administrator interface.
 
 SQLite is available only through an explicit `sqlite:///...`
 URL for local testing; it is never selected by default. Keep this secret
 server-side; never add it to frontend environment files.
 
-After creating the schema/fixtures for any database, run `uv run alembic upgrade
-head`. Structural changes are tracked under `backend/alembic/versions`; simulated
-fixture data remains in `data/` and is not managed by Alembic.
+Run `uv run alembic upgrade head` for tracked structural changes. The schema-only
+bootstrap also runs at startup. Optional local fixture SQL files stay ignored
+in `data/`; they are not required in a fresh checkout or hosted function.
 
 For production, set these **backend-only** environment variables:
 
@@ -53,8 +51,9 @@ database or filesystem. Keep `FRONTEND_URL` set to your deployed frontend origin
 
 Create `disease-photos` in Supabase **Storage** with **Public disabled**, a 10 MB
 file limit, and JPEG/PNG/WebP allowed types. Get the project URL from **Connect**
-and the backend secret from **Settings → API Keys**. Run the manual seed and
-`uv run alembic upgrade head` before starting the API. The bucket is checked for
+and the backend secret from **Settings → API Keys**. Run
+`uv run alembic upgrade head` before starting the API. Leave
+`LOAD_DEMO_SEED=false` (the default). The bucket is checked for
 privacy before uploads and downloads. Only consented crop-review photos are
 uploaded; database records store a `supabase://bucket/path` reference. Admin photo
 endpoints check the existing account role and proxy private bytes with `no-store`.
@@ -85,6 +84,13 @@ requests from `/api/v1/*`. Set `FRONTEND_URL` in `backend/.env`
 to the exact frontend origin (for example, `http://localhost:3000`). Restart
 both servers after changing either value.
 
+For Vercel, set `BACKEND_URL` in the frontend project's environment variables
+to the separately deployed FastAPI service's **public HTTPS origin**, without
+`/api/v1`, and redeploy so the rewrite is rebuilt. Localhost works only for
+local development. Set the backend's `FRONTEND_URL` to the hosted frontend's
+exact origin. See [frontend deployment checks](frontend/README.md#deploy-on-vercel)
+for troubleshooting HTML API 404s and `DNS_HOSTNAME_RESOLVED_PRIVATE` errors.
+
 ## Demonstrate disease identification
 
 1. Open **Check crop health**.
@@ -110,8 +116,8 @@ both servers after changing either value.
    Clarifications and AI failures can also be saved; they never create outbreak matches.
    A report or storage failure is visible without discarding a completed identification.
 
-Edit `data/seed.sql` to change fresh-install sample data. Existing databases keep
-admin edits across restarts. In development, consented review photos are stored
+Add test records manually using the [disease UI test guide](docs/DISEASE_UI_TEST_GUIDE.md).
+Existing databases keep admin edits across restarts. In development, consented review photos are stored
 under `data/outbreak_evidence/` and are git-ignored. Production uses the private
 Supabase Storage bucket described above.
 
@@ -127,9 +133,9 @@ uv run python scripts/create_admin.py
 ```
 
 The script prompts for name, email, password, and password confirmation. Only an
-authenticated administrator can see or use **Information databases**. Existing
-planting tables are intentionally retained in the database for data preservation,
-but no planting route, page, navigation, or API is exposed.
+authenticated administrator can see or use **Information databases**. Disease
+and planting remain independently accessible; empty evidence produces explicit
+clarification. The manual test guide covers disease only.
 
 ## Checks
 
@@ -157,21 +163,26 @@ export is disabled and Responses requests use `store=false`; local audit IDs are
 OpenAI dashboard trace IDs. Raw model exchanges and provider error bodies are not
 logged. Provider processing remains subject to the account's data policies.
 
-The existing admin interface has no authentication and is for local demo use only.
-It now contains consented case data and photos; deployment with real farmer records
-requires access control and a retention policy. Case snapshots cannot be edited through
+The admin interface requires administrator authentication. Consented case data
+and photos require an appropriate retention policy. Case snapshots cannot be edited through
 the table editor; review fields remain editable. Existing records survive the additive
 schema update on backend restart.
 
 
 ## Duducare local demo (no external services required)
 
+A fresh database is empty. Use the [disease UI test guide](docs/DISEASE_UI_TEST_GUIDE.md)
+to add disease records manually. The older sample walkthroughs below assume
+matching records already exist; planting returns clarification until its own
+location, season, and crop evidence is supplied. Private local fixtures are
+optional and are not distributed with the repository.
+
 Use an explicit local SQLite URL to keep testing separate from any configured database:
 
 ```bash
 cd backend
 uv sync
-DATABASE_URL=sqlite:////tmp/duducare-demo.db OPENAI_API_KEY='' FRONTEND_URL=http://localhost:3000 uv run uvicorn app.main:app --reload
+DATABASE_URL=sqlite:////tmp/duducare-demo.db LOAD_DEMO_SEED=false OPENAI_API_KEY='' FRONTEND_URL=http://localhost:3000 uv run uvicorn app.main:app --reload
 ```
 
 In another terminal:
@@ -257,8 +268,8 @@ Legacy evidence records and saved results keep their original wording; the
 Swahili interface discloses this rather than silently translating source material.
 
 For existing PostgreSQL databases, run `uv run alembic upgrade head` from backend
-before saving animal cases. New manual Supabase seed exports include animal_cases.
-SQLite demos create this additive table on startup. Restart FastAPI after updating.
+before saving animal cases. Schema-only startup creates the same empty tables
+on either backend. Restart FastAPI after updating.
 
 Focused verification from backend:
 

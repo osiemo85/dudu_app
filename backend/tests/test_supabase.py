@@ -147,7 +147,9 @@ class SupabasePhotoTests(unittest.TestCase):
         self.assertEqual(self.requests, [])
 
     def prepare_database(self):
-        dev = replace(settings, env="test", database_url=f"sqlite:///{self.directory}/test.db",
+        if not settings.seed_path.is_file():
+            self.skipTest("Optional local fixtures are not present.")
+        dev = replace(settings, env="test", load_demo_seed=True, database_url=f"sqlite:///{self.directory}/test.db",
                       outbreak_evidence_dir=Path(self.directory) / "images", openai_api_key=None)
         self.enterContext(patch("app.data_access.database.settings", dev))
         self.enterContext(patch("app.services.outbreak_recorder.settings", self.config))

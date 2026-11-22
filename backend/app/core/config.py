@@ -25,6 +25,7 @@ class Settings:
     supabase_secret_key: str = field(default_factory=lambda: os.getenv("SUPABASE_SECRET_KEY", "").strip(), repr=False)
     supabase_storage_bucket: str = field(default_factory=lambda: os.getenv("SUPABASE_STORAGE_BUCKET", "").strip())
     seed_path: Path = PROJECT_DIR / "data" / "seed.sql"
+    load_demo_seed: bool = field(default_factory=lambda: os.getenv("LOAD_DEMO_SEED", "false").lower() in {"1", "true", "yes"})
     outbreak_evidence_dir: Path = Path(os.getenv("OUTBREAK_EVIDENCE_DIR", PROJECT_DIR / "data" / "outbreak_evidence"))
     openai_api_key: str | None = field(default=os.getenv("OPENAI_API_KEY"), repr=False)
     openai_model: str = os.getenv("OPENAI_MODEL", "gpt-5.6-terra")
@@ -35,6 +36,8 @@ class Settings:
         return self.env in {"prod", "production"}
 
     def __post_init__(self) -> None:
+        if self.load_demo_seed and (self.is_production or os.getenv("VERCEL") == "1"):
+            raise ValueError("LOAD_DEMO_SEED is local-only and must be disabled in production and Vercel.")
         if not self.is_production:
             return
         required = {

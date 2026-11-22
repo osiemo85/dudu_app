@@ -2,3 +2,10 @@ advisory.db
 advisory.db-shm
 advisory.db-wal
 outbreak_evidence/
+
+# Private, optional local fixtures. Hosted startup uses schema-only Python code.
+seed.sql
+supabase_seed.sql
+planting_tables.sql
+management_enrichment.sql
+management_input_examples.sql

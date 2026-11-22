@@ -2,7 +2,7 @@
 import { useLanguage, T } from "@/components/LanguageProvider";
 
 import { useState } from "react";
-import { PUBLIC_API_BASE_URL } from "@/lib/api";
+import { PUBLIC_API_BASE_URL, readApiJson } from "@/lib/api";
 
 export function AccountForm({
   onSuccess,
@@ -35,14 +35,7 @@ export function AccountForm({
           }),
         },
       );
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(
-          typeof payload.detail === "string"
-            ? payload.detail
-            : "Check your email and password (at least 8 characters).",
-        );
-      }
+      await readApiJson(response, "Check your email and password (at least 8 characters).");
       window.dispatchEvent(new Event("account-changed"));
       onSuccess();
     } catch (reason) {

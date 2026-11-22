@@ -11,6 +11,21 @@ export type ApiStatus = {
 const API_BASE_URL = "";
 export const PUBLIC_API_BASE_URL = API_BASE_URL;
 
+/** Keep proxy HTML/text errors out of account forms. */
+export async function readApiJson<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const unavailable = "The account service is unavailable. Please try again later.";
+  const payload: unknown = await response.json().catch(() => null);
+  if (payload === null || typeof payload !== "object") {
+    throw new Error(unavailable);
+  }
+  if (!response.ok) {
+    throw new Error("detail" in payload && typeof payload.detail === "string"
+      ? payload.detail
+      : fallbackMessage);
+  }
+  return payload as T;
+}
+
 export async function getApiStatus(): Promise<ApiStatus> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/health`, {
