@@ -7,29 +7,30 @@ import { PUBLIC_API_BASE_URL } from "@/lib/api";
 import { RecordModal } from "./RecordModal";
 import { Icon } from "./Icon";
 
-export const cropHealthTables = ["disease_cases", "sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "agrovets", "outbreaks"] as const;
+export const cropHealthTables = ["disease_cases", "sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "agrovets", "agrovet_drugs", "outbreaks"] as const;
 export type CropHealthTable = (typeof cropHealthTables)[number];
-type Field = { key: string; label: string; type?: "text" | "textarea" | "number" | "date" | "select" | "checkbox"; options?: string[]; reference?: CropHealthTable; optional?: boolean };
+type Field = { key: string; label: string; type?: "text" | "textarea" | "number" | "date" | "select" | "checkbox"; options?: string[]; reference?: CropHealthTable | "users"; optional?: boolean };
 type TableConfig = { label: string; description: string; fields: Field[]; filters?: string[]; immutable?: boolean };
-type Option = { id: number; label: string };
+type Option = { id: number; label: string; crop?: string };
 type TableData = { editable_columns: string[]; records: Array<Record<string, unknown>>; total: number; page: number; page_size: number; reference_options: Record<string, Option[]> };
 const statuses = ["simulated", "manually_supplied", "awaiting_validation", "verified"];
 const configs: Record<CropHealthTable, TableConfig> = {
-  disease_cases: { label: "Disease cases", description: "Consented farmer case history. Findings remain unverified until reviewed.", immutable: true, filters: ["expert_approval"], fields: [{ key: "crop", label: "Crop" }, { key: "location_label", label: "Location" }, { key: "season_label", label: "Season" }, { key: "expert_approval", label: "Review decision", type: "select", options: ["approved", "rejected"] }, { key: "expert_review_note", label: "Expert review note", type: "textarea" }] },
+  disease_cases: { label: "Disease cases", description: "Consented farmer case history. AI suggestions remain separate from expert corrections.", immutable: true, filters: ["expert_approval"], fields: [{ key: "crop", label: "Crop" }, { key: "location_label", label: "Location" }, { key: "season_label", label: "Season" }, { key: "expert_approval", label: "Status", type: "select", options: ["approved", "rejected"] }, { key: "identified_disease", label: "Identified disease" }, { key: "reviewed_disease_id", label: "Reviewed disease", type: "select", reference: "diseases", optional: true }, { key: "expert_review_note", label: "Expert review comment", type: "textarea" }] },
   sources: { label: "Sources", description: "Attributable simulated evidence used by this demo.", filters: ["evidence_status"], fields: [{ key: "name", label: "Source name" }, { key: "source_date", label: "Date or period" }, { key: "geographic_scope", label: "Geographic coverage" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }, { key: "limitations", label: "Limitations", type: "textarea" }] },
   locations: { label: "Locations", description: "Demo counties and areas. Coordinates are manually supplied test data, not verified farmer GPS.", filters: ["county", "evidence_status"], fields: [{ key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "latitude", label: "Latitude", type: "number" }, { key: "longitude", label: "Longitude", type: "number" }, { key: "agro_ecological_context", label: "Agro-ecological context", type: "textarea" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
   seasons: { label: "Seasons", description: "County-specific sample season periods and their evidence basis.", filters: ["county"], fields: [{ key: "county", label: "County" }, { key: "label", label: "Season" }, { key: "period", label: "Period" }, { key: "start_month", label: "Start month", type: "number" }, { key: "end_month", label: "End month", type: "number" }, { key: "basis", label: "Evidence basis", type: "textarea" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }] },
   diseases: { label: "Diseases", description: "Possible disease matches used for bounded symptom matching—not confirmed diagnoses.", filters: ["crop", "evidence_status"], fields: [{ key: "crop", label: "Crop" }, { key: "common_name", label: "Common name" }, { key: "scientific_name", label: "Scientific name", optional: true }, { key: "summary", label: "Summary", type: "textarea" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
-  disease_symptoms: { label: "Disease symptoms", description: "Weighted symptom signals linked to a possible disease match.", fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "plant_part", label: "Plant part" }, { key: "symptom", label: "Symptom" }, { key: "weight", label: "Match weight", type: "number" }] },
+  disease_symptoms: { label: "Disease symptoms", description: "Weighted symptom signals linked to a possible disease match. Plant parts use the same exact values as the farmer form.", fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "plant_part", label: "Plant part", type: "select" }, { key: "symptom", label: "Symptom" }, { key: "weight", label: "Match weight", type: "number" }] },
   treatments: { label: "Treatment context", description: "Source-backed, bounded actions. These are not pesticide prescriptions.", filters: ["crop", "evidence_status"], fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "crop", label: "Crop" }, { key: "geographic_scope", label: "Geographic coverage" }, { key: "action", label: "Recommended action", type: "textarea" }, { key: "treatment_type", label: "Action type" }, { key: "requires_verified_diagnosis", label: "Requires verified diagnosis", type: "checkbox" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
-  agrovets: { label: "Agrovets", description: "Simulated directory entries and indicative costs; never current stock, price, approval, or routing information.", filters: ["county", "area", "evidence_status"], fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "name", label: "Business name" }, { key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "address", label: "Address" }, { key: "phone_number", label: "Phone number" }, { key: "treatment_name", label: "Service or treatment name" }, { key: "indicative_cost_kes", label: "Indicative cost (KES)" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }] },
+  agrovets: { label: "Agrovets", description: "One business record per name and area. Assign a registered owner; add further drug and disease pairs under Agrovet drugs. Listings are unverified.", filters: ["county", "area", "evidence_status"], fields: [{ key: "disease_id", label: "Initial disease", type: "select", reference: "diseases" }, { key: "name", label: "Business name" }, { key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "address", label: "Address" }, { key: "phone_number", label: "Phone number" }, { key: "treatment_name", label: "Initial drug or service name" }, { key: "indicative_cost_kes", label: "Indicative cost (KES)" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }, { key: "owner_user_id", label: "Owner account", type: "select", reference: "users", optional: true }] },
+  agrovet_drugs: { label: "Agrovet drugs", description: "Add a drug and its disease to an existing agrovet. These are reported listings, not approved treatments or verified stock.", filters: ["agrovet_id", "disease_id", "availability_status"], fields: [{ key: "agrovet_id", label: "Existing agrovet", type: "select", reference: "agrovets" }, { key: "disease_id", label: "Disease it is listed for", type: "select", reference: "diseases" }, { key: "drug_name", label: "Drug name" }, { key: "availability_status", label: "Reported availability", type: "select", options: ["reported_available", "reported_unavailable"] }] },
   outbreaks: { label: "Outbreak records", description: "Historical simulated records and observations awaiting expert approval—not live alerts.", filters: ["county", "area", "evidence_status", "expert_approval"], fields: [{ key: "disease_id", label: "Possible disease", type: "select", reference: "diseases" }, { key: "county", label: "County" }, { key: "area", label: "Area" }, { key: "observed_period", label: "Observed period" }, { key: "report_summary", label: "Report summary", type: "textarea" }, { key: "source_id", label: "Source", type: "select", reference: "sources" }, { key: "evidence_status", label: "Evidence status", type: "select", options: statuses }, { key: "coordinate_status", label: "Coordinate status" }, { key: "latitude", label: "Latitude", type: "number", optional: true }, { key: "longitude", label: "Longitude", type: "number", optional: true }, { key: "llm_identified", label: "AI-assisted observation", type: "checkbox" }] },
 };
 export const cropHealthTableLabels = Object.fromEntries(cropHealthTables.map((table) => [table, configs[table].label])) as Record<CropHealthTable, string>;
 const title = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const blanks = (fields: Field[]) => Object.fromEntries(fields.map((field) => [field.key, field.type === "checkbox" ? false : ""]));
 const previewColumns: Record<CropHealthTable, string[]> = {
-  disease_cases: ["crop", "location_label", "season_label", "expert_approval"],
+  disease_cases: ["crop", "location_label", "season_label", "expert_approval", "identified_disease"],
   sources: ["name", "source_date", "geographic_scope", "evidence_status"],
   locations: ["county", "area", "agro_ecological_context", "evidence_status"],
   seasons: ["county", "label", "period", "source_id"],
@@ -37,6 +38,7 @@ const previewColumns: Record<CropHealthTable, string[]> = {
   disease_symptoms: ["disease_id", "plant_part", "symptom", "weight"],
   treatments: ["disease_id", "crop", "treatment_type", "evidence_status"],
   agrovets: ["name", "county", "area", "evidence_status"],
+  agrovet_drugs: ["agrovet_id", "drug_name", "disease_id", "availability_status"],
   outbreaks: ["disease_id", "county", "observed_period", "expert_approval"],
 };
 
@@ -49,15 +51,16 @@ export function AdminTables({ table }: { table: CropHealthTable }) {
   const [filterField, setFilterField] = useState(query.get("filter") ?? "");
   const [filterValue, setFilterValue] = useState(query.get("value") ?? "");
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState<Record<string, string | boolean>>(() => blanks(config.fields));
+  const [form, setForm] = useState<Record<string, string | boolean>>(() => ({ ...blanks(config.fields), ...(table === "agrovet_drugs" && query.get("agrovet_id") ? { agrovet_id: query.get("agrovet_id")! } : {}) }));
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [viewing, setViewing] = useState<Record<string, unknown> | null>(null);
   const [message, setMessage] = useState("");
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(table === "agrovet_drugs" && query.get("add") === "1");
   const [formError, setFormError] = useState("");
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [plantParts, setPlantParts] = useState<string[]>([]);
   const [reviewDecision, setReviewDecision] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const addForm = useRef<HTMLFormElement>(null);
@@ -89,8 +92,26 @@ export function AdminTables({ table }: { table: CropHealthTable }) {
     return () => controller.abort();
   }, [load]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- Linked record navigation updates the page-local filter.
-  useEffect(() => { setFilterField(query.get("filter") ?? ""); setFilterValue(query.get("value") ?? ""); setPage(1); }, [query]);
+  useEffect(() => {
+    if (table !== "disease_symptoms") return;
+    fetch(`${PUBLIC_API_BASE_URL}/api/v1/disease/plant-parts`)
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then(setPlantParts)
+      .catch(() => setLoadError("Could not load the shared plant-part list."));
+  }, [table]);
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setFilterField(query.get("filter") ?? ""); setFilterValue(query.get("value") ?? ""); setPage(1);
+      if (table === "agrovet_drugs" && query.get("add") === "1") {
+        setFormOpen(true);
+        setForm((current) => ({ ...current, agrovet_id: query.get("agrovet_id") ?? "" }));
+      }
+    });
+    return () => { active = false; };
+  }, [query, table]);
   useEffect(() => {
     if (formOpen) addForm.current?.querySelector<HTMLElement>("input, select, textarea")?.focus();
   }, [formOpen]);
@@ -117,7 +138,7 @@ export function AdminTables({ table }: { table: CropHealthTable }) {
       ? Number(record[field.key]) === 1 || record[field.key] === true
       : table === "disease_cases" && field.key === "expert_approval" && record[field.key] === "pending" ? "" : String(record[field.key] ?? "")])));
   };
-  const closeEdit = () => { setEditing(null); setFormError(""); setForm(blanks(config.fields)); };
+  const closeEdit = () => { setEditing(null); setFormError(""); setForm({ ...blanks(config.fields), ...(table === "agrovet_drugs" && query.get("agrovet_id") ? { agrovet_id: query.get("agrovet_id")! } : {}) }); };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setFormError(""); setSaving(true);
     const values = Object.fromEntries(editable.map((field) => [field.key, field.type === "checkbox" ? (form[field.key] ? 1 : 0) : field.optional && form[field.key] === "" ? null : form[field.key]]));
@@ -162,16 +183,17 @@ export function AdminTables({ table }: { table: CropHealthTable }) {
     <header className="admin-database-heading">
       <div><h1>{config.label}</h1><p>{config.description}</p></div>
       <div className="admin-heading-actions">
+        {table === "agrovets" && <Link href="/disease/admin/agrovet_drugs?add=1" className="button button-primary">Add drug to existing agrovet</Link>}
         <button type="button" className="admin-icon-button" onClick={() => void load()} disabled={loading} aria-label="Refresh records" title="Refresh records"><Icon name="refresh" size={18} /></button>
-        {!config.immutable && <button type="button" className="button button-primary admin-add-button" aria-expanded={formOpen} aria-controls="database-record-form" onClick={() => { setFormError(""); setFormOpen((open) => !open); }}><Icon name="plus" size={17} />{formOpen ? "Close form" : "Add record"}</button>}
+        {!config.immutable && <button type="button" className="button button-primary admin-add-button" aria-expanded={formOpen} aria-controls="database-record-form" onClick={() => { setFormError(""); setFormOpen((open) => !open); }}><Icon name="plus" size={17} />{formOpen ? "Close form" : table === "agrovet_drugs" ? "Add drug listing" : table === "agrovets" ? "Add new agrovet" : "Add record"}</button>}
       </div>
     </header>
     {!config.immutable && formOpen && <section className="admin-create-panel">
-      <h2>Add {config.label.toLowerCase().replace(/s$/, "")}</h2>
+      <h2>{table === "agrovet_drugs" ? "Add a drug to an existing agrovet" : `Add ${config.label.toLowerCase().replace(/s$/, "")}`}</h2>
       <form ref={addForm} id="database-record-form" onSubmit={submit} className="admin-record-form">
-        {editable.map((field) => <FieldInput key={field.key} field={field} value={form[field.key]} options={data?.reference_options[field.key]} onChange={(value) => setForm((old) => ({ ...old, [field.key]: value }))} />)}
+        {editable.map((field) => <FieldInput key={field.key} field={field.key === "plant_part" ? { ...field, options: plantParts } : field} value={form[field.key]} options={data?.reference_options[field.key]} onChange={(value) => setForm((old) => ({ ...old, [field.key]: value }))} />)}
         {formError && <p role="alert" className="error-message admin-full-width">{formError}</p>}
-        <div className="admin-form-actions admin-full-width"><button disabled={saving || loading} className="button button-primary">{saving ? "Saving…" : "Add simulated record"}</button><button type="button" className="button button-secondary" onClick={() => setFormOpen(false)}>Cancel</button></div>
+        <div className="admin-form-actions admin-full-width"><button disabled={saving || loading} className="button button-primary">{saving ? "Saving…" : table === "agrovet_drugs" ? "Save drug listing" : "Add simulated record"}</button><button type="button" className="button button-secondary" onClick={() => setFormOpen(false)}>Cancel</button></div>
       </form>
     </section>}
     {message && <p role="status" className="admin-feedback"><Icon name="check" size={16} />{message}</p>}
@@ -189,14 +211,15 @@ export function AdminTables({ table }: { table: CropHealthTable }) {
       {loadError ? <div className="admin-empty" role="alert"><strong>Records could not be loaded</strong><p>{loadError}</p><button type="button" className="button button-secondary" onClick={() => void load()}>Retry</button></div>
         : loading ? <div className="admin-empty" role="status"><span className="admin-loading-dot" /><p>Loading {config.label.toLowerCase()}…</p></div>
         : records.length === 0 ? <div className="admin-empty"><span className="admin-empty-icon"><Icon name={filtered ? "search" : "clipboard"} size={24} /></span><h3>{filtered ? "No matching records" : "No records yet"}</h3><p>{filtered ? "Try another search or clear your filters." : config.immutable ? "Cases appear here when farmers choose Save for expert review and saving succeeds." : "Add a dated, attributed demo record to get started."}</p>{filtered && <button type="button" className="button button-secondary" onClick={() => { setSearch(""); filterCases(""); }}>Clear filters</button>}</div>
-        : <div className="admin-table-container"><table className="admin-table"><caption className="sr-only">{config.label} — {data?.total} records</caption><thead><tr>{shown.map((field) => <th scope="col" key={field.key}>{field.label}</th>)}<th scope="col">Actions</th></tr></thead><tbody>{records.map((record) => <tr key={String(record.id)}>{shown.map((field) => <td key={field.key} data-label={field.label}>{field.key === "expert_approval" || field.key === "evidence_status" ? <span className="admin-status-badge" data-status={String(record[field.key])}>{title(read(record, field))}</span> : field.reference ? <Link href={`/disease/admin/${field.reference}?filter=id&value=${record[field.key]}`} className="admin-record-link">{read(record, field)}</Link> : <span>{read(record, field)}</span>}</td>)}<td data-label="Actions"><div className="admin-row-actions"><button type="button" onClick={() => setViewing(record)}>View</button><button type="button" className="admin-review-button" onClick={() => edit(record)}>{config.immutable ? "Review" : "Edit"}</button>{!config.immutable && <button type="button" className="admin-delete-button" onClick={() => void remove(record)}>Delete</button>}</div></td></tr>)}</tbody></table></div>}
+        : <div className="admin-table-container"><table className="admin-table"><caption className="sr-only">{config.label} — {data?.total} records</caption><thead><tr>{shown.map((field) => <th scope="col" key={field.key}>{field.label}</th>)}<th scope="col">Actions</th></tr></thead><tbody>{records.map((record) => <tr key={String(record.id)}>{shown.map((field) => <td key={field.key} data-label={field.label}>{field.key === "expert_approval" || field.key === "evidence_status" ? <span className="admin-status-badge" data-status={String(record[field.key])}>{title(read(record, field))}</span> : field.reference ? <Link href={`/disease/admin/${field.reference}?filter=id&value=${record[field.key]}`} className="admin-record-link">{read(record, field)}</Link> : <span>{read(record, field)}</span>}</td>)}<td data-label="Actions"><div className="admin-row-actions"><button type="button" onClick={() => setViewing(record)}>View</button>{table === "agrovets" && <Link href={`/disease/admin/agrovet_drugs?filter=agrovet_id&value=${record.id}&agrovet_id=${record.id}&add=1`}>Add drug</Link>}<button type="button" className="admin-review-button" onClick={() => edit(record)}>{config.immutable ? "Review" : "Edit"}</button>{!config.immutable && <button type="button" className="admin-delete-button" onClick={() => void remove(record)}>Delete</button>}</div></td></tr>)}</tbody></table></div>}
       <footer className="admin-pagination"><span>{data?.total ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, data.total)} of ${data.total}` : "0 records"}</span><div><button type="button" disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {Math.max(1, Math.ceil((data?.total ?? 0) / pageSize))}</span><button type="button" disabled={loading || !data || page * pageSize >= data.total} onClick={() => setPage((value) => value + 1)}>Next</button></div></footer>
     </section>
     <p className="admin-evidence-note"><Icon name="book" size={15} />Local demo evidence. Review decisions do not establish a current outbreak or an authorized treatment.</p>
     {editing && <RecordModal title={config.immutable ? "Review disease case" : `Edit ${config.label.toLowerCase()}`} onClose={closeEdit}>
       <p className="admin-modal-description">{config.immutable ? "Record a decision and explain your findings. Original case evidence is preserved." : "Update this local demo record and keep its provenance accurate."}</p>
       <form onSubmit={submit} className="admin-record-form">
-        {editable.map((field) => <FieldInput key={field.key} idPrefix="edit" field={field} value={form[field.key]} options={data?.reference_options[field.key]} onChange={(value) => setForm((old) => ({ ...old, [field.key]: value }))} />)}
+        {table === "disease_cases" && <p className="admin-full-width text-sm text-slate-600">AI suggested: {String(editing.ai_disease_name || "No supported match")}. Select the reviewed disease and explain any correction. The original AI result is preserved.</p>}
+        {editable.map((field) => <FieldInput key={field.key} idPrefix="edit" field={field.key === "plant_part" ? { ...field, options: plantParts } : field} value={form[field.key]} options={field.key === "reviewed_disease_id" ? data?.reference_options[field.key]?.filter((option) => option.crop?.toLowerCase() === String(editing.crop || "").toLowerCase()) : data?.reference_options[field.key]} onChange={(value) => setForm((old) => ({ ...old, [field.key]: value }))} />)}
         {formError && <p role="alert" className="error-message admin-full-width">{formError}</p>}
         <div className="admin-form-actions admin-full-width"><button disabled={saving} className="button button-primary">{saving ? "Saving…" : config.immutable ? "Save review" : "Save changes"}</button><button type="button" className="button button-secondary" onClick={closeEdit}>Cancel</button></div>
       </form>
@@ -209,7 +232,7 @@ export function AdminTables({ table }: { table: CropHealthTable }) {
     </RecordModal>}
     {viewing && <RecordModal title={config.immutable ? "Disease case details" : `${config.label} details`} onClose={() => setViewing(null)}>
       <RecordDetails record={viewing} table={table} options={data?.reference_options ?? {}} />
-      <div className="admin-form-actions admin-detail-actions"><button type="button" onClick={() => edit(viewing)} className="button button-primary">{config.immutable ? "Review case" : "Edit record"}</button><button type="button" onClick={() => setViewing(null)} className="button button-secondary">Close</button></div>
+      <div className="admin-form-actions admin-detail-actions">{table === "agrovets" && <Link href={`/disease/admin/agrovet_drugs?filter=agrovet_id&value=${viewing.id}&agrovet_id=${viewing.id}&add=1`} className="button button-primary">Add drug and disease</Link>}<button type="button" onClick={() => edit(viewing)} className="button button-primary">{config.immutable ? "Review case" : "Edit record"}</button><button type="button" onClick={() => setViewing(null)} className="button button-secondary">Close</button></div>
     </RecordModal>}
   </div>;
 }
@@ -249,7 +272,7 @@ function RecordDetails({ record, table, options }: { record: Record<string, unkn
       <dd className="mt-1 break-words text-sm leading-6 text-slate-800">
         {key === "image_path" && value && (table === "disease_cases" || table === "outbreaks")
           ? <a href={`${PUBLIC_API_BASE_URL}/api/v1/admin/crop-health/${table}/${record.id}/image`} target="_blank" rel="noreferrer" className="font-semibold text-emerald-700 underline">Open photo</a>
-          : linkedTable && linkedLabel
+            : linkedTable && linkedLabel && linkedTable !== "users"
             ? <Link href={`/disease/admin/${linkedTable}?filter=id&value=${value}`} className="font-semibold text-emerald-700 underline">{linkedLabel}</Link>
             : key.endsWith("_json") && value
               ? <details className="admin-evidence-details"><summary>Inspect {title(key.replace(/_json$/, "")).toLowerCase()}</summary><pre>{formatted}</pre></details>

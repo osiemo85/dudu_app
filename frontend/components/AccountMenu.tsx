@@ -181,6 +181,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
                 {t("Settings", "Mipangilio")}
                 <Icon name="chevron" size={16} />
               </Link>
+              {account && <Link onClick={close} href="/agrovets/mine"><Icon name="clipboard" size={19} />My agrovet drugs<Icon name="chevron" size={16} /></Link>}
               {account?.role === "admin" && (
                 <Link onClick={close} href="/disease/admin/disease_cases">
                   <Icon name="clipboard" size={19} />
