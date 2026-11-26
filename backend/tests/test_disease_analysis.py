@@ -18,7 +18,7 @@ from app.services.disease_agent import AgentResult
 
 # A synthetic one-pixel PNG, used only to check transport (not diagnosis quality).
 IMAGE = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=")
-CONTEXT = {"crop": "Tomato", "county": "Kiambu", "area": "Thika", "season": "Long rains"}
+CONTEXT = {"crop": "Tomato", "county": "Kiambu", "area": "Thika", "season": "Long rains", "affected_part": "leaf"}
 PAYLOAD = {
     "selected_disease_ids": [1], "confidence_level": "low",
     "confidence_explanation": "Possible visual match; requires expert review.",
@@ -199,7 +199,8 @@ class DiseaseAnalysisTests(unittest.TestCase):
         from app.data_access import disease_repository as repository
         self.assertNotIn(case["outbreak_id"], [row["id"] for row in repository.get_outbreak_context("Kiambu", [1])])
         reviewed = self.client.put(f"/api/v1/admin/crop-health/disease_cases/{case['id']}", json={"values": {
-            "expert_approval": "approved", "expert_review_note": "Reviewed test record", "result_json": "tampered"}})
+            "expert_approval": "approved", "reviewed_disease_id": 1,
+            "expert_review_note": "Reviewed test record", "result_json": "tampered"}})
         self.assertEqual(reviewed.status_code, 200)
         self.assertEqual(reviewed.json()["result_json"], case["result_json"])
         self.assertIn(case["outbreak_id"], [row["id"] for row in repository.get_outbreak_context("Kiambu", [1])])

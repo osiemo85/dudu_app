@@ -4,14 +4,20 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from starlette.concurrency import run_in_threadpool
 
 from app.data_access import disease_repository as repository
-from app.models.disease import DiseaseCaseComment, DiseaseCaseCommentCreate, DiseaseCaseDetail, DiseaseCaseSummary, DiseaseRequest, DiseaseResponse, LocationOption, NearbyAgrovetsResponse, SeasonOption
+from app.models.disease import AgrovetLocationOption, DiseaseCaseComment, DiseaseCaseCommentCreate, DiseaseCaseDetail, DiseaseCaseSummary, DiseaseRequest, DiseaseResponse, LocationOption, NearbyAgrovetsResponse, SeasonOption
 from app.services.agrovet_service import find_nearby_agrovets
 from app.services.accounts import current_user, optional_current_user
 from app.models.user_plans import Account
 from app.services import disease_case_history
 from app.services.disease_engine import identify_disease
+from app.core.plant_parts import PLANT_PARTS
 
 router = APIRouter(prefix="/disease", tags=["disease identification"])
+
+
+@router.get("/plant-parts", response_model=list[str])
+def plant_parts() -> list[str]:
+    return list(PLANT_PARTS)
 
 
 @router.get("/locations", response_model=list[LocationOption])
@@ -72,6 +78,17 @@ def cases(account: Account = Depends(current_user)) -> list[DiseaseCaseSummary]:
 @router.get("/cases/{case_id}", response_model=DiseaseCaseDetail)
 def case(case_id: int, account: Account = Depends(current_user)) -> DiseaseCaseDetail:
     return disease_case_history.case_detail(case_id, account.id)
+
+
+@router.get("/cases/{case_id}/nearby-agrovets", response_model=NearbyAgrovetsResponse)
+def case_nearby_agrovets(case_id: int, county: str | None = None, area: str | None = None,
+                         account: Account = Depends(current_user)) -> NearbyAgrovetsResponse:
+    return disease_case_history.nearby_agrovets(case_id, account.id, county, area)
+
+
+@router.get("/cases/{case_id}/agrovet-locations", response_model=list[AgrovetLocationOption])
+def case_agrovet_locations(case_id: int, account: Account = Depends(current_user)) -> list[AgrovetLocationOption]:
+    return disease_case_history.agrovet_locations(case_id, account.id)
 
 
 @router.post("/cases/{case_id}/comments", response_model=DiseaseCaseComment, status_code=201)

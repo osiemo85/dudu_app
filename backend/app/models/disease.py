@@ -139,6 +139,11 @@ class DiseaseCaseComment(BaseModel):
     created_at: str
 
 
+class AgrovetLocationOption(BaseModel):
+    county: str
+    area: str
+
+
 class DiseaseCaseSummary(BaseModel):
     id: int
     created_at: str
@@ -147,11 +152,15 @@ class DiseaseCaseSummary(BaseModel):
     season: str
     status: str
     possible_matches: list[str] = Field(default_factory=list)
+    reviewed_disease_id: int | None = None
+    reviewed_disease_name: str | None = None
     expert_approval: Literal["pending", "approved", "rejected"]
     expert_review_note: str | None = None
 
 
 class DiseaseCaseDetail(DiseaseCaseSummary):
+    county: str | None = None
+    area: str | None = None
     symptoms: str | None = None
     affected_part: str | None = None
     spread_pattern: str | None = None

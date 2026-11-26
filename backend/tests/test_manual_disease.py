@@ -73,7 +73,7 @@ class ManualDiseaseFlow:
 
     def identify(self, **changes):
         data = {"crop": "Tomato", "county": "Kiambu", "area": "Thika", "season": "Long rains",
-                "symptoms": "brown spots with concentric rings", **changes}
+                "affected_part": "leaf", "symptoms": "brown spots with concentric rings", **changes}
         response = self.client.post("/api/v1/disease/identify", data=data)
         self.assertEqual(response.status_code, 200, response.text)
         return response.json()
@@ -93,6 +93,9 @@ class ManualDiseaseFlow:
 
     def test_manual_entries_power_symptoms_directory_and_no_match(self):
         source, disease = self.enter_guide_records()
+        parts = self.client.get("/api/v1/disease/plant-parts").json()
+        self.assertIn("leaf", parts)
+        self.assertIn("tuber flesh", parts)
         for table in ("sources", "locations", "seasons", "diseases", "disease_symptoms", "treatments", "outbreaks", "agrovets"):
             listing = self.client.get(f"/api/v1/admin/crop-health/{table}")
             self.assertEqual(listing.status_code, 200, listing.text)
@@ -114,6 +117,15 @@ class ManualDiseaseFlow:
         unmatched = self.identify(symptoms="xyzq")
         self.assertEqual(unmatched["status"], "needs_clarification")
         self.assertEqual(unmatched["candidates"], [])
+        wrong_part = self.identify(affected_part="stem")
+        self.assertEqual(wrong_part["status"], "needs_clarification")
+        self.assertEqual(wrong_part["candidates"], [])
+        missing_part = self.identify(affected_part="")
+        self.assertEqual(missing_part["clarification"]["field"], "affected_part")
+        invalid = self.client.post("/api/v1/admin/crop-health/disease_symptoms", json={"values": {
+            "disease_id": disease["id"], "plant_part": "Fruits", "symptom": "brown patches", "weight": 1,
+        }})
+        self.assertEqual(invalid.status_code, 422)
 
     def test_consent_review_and_restart_preserve_only_user_entered_records(self):
         self.enter_guide_records()
@@ -132,6 +144,149 @@ class ManualDiseaseFlow:
         initialize_database()
         self.assertEqual(self.client.get("/api/v1/admin/crop-health/sources").json()["total"], 1)
         self.assertEqual(self.client.get("/api/v1/admin/crop-health/disease_cases").json()["records"][0]["expert_approval"], "rejected")
+
+    def test_expert_corrects_disease_and_case_directory_uses_reviewed_choice(self):
+        source, original = self.enter_guide_records()
+        corrected = self.add("diseases", crop="Tomato", common_name="Other tomato test cause",
+                             scientific_name=None, summary="Fictional review correction.",
+                             source_id=str(source["id"]), evidence_status="simulated")
+        self.add("agrovets", disease_id=str(corrected["id"]), name="Corrected cause test shop",
+                 county="Kiambu", area="Thika", address="Fictional", phone_number="Not a contact",
+                 treatment_name="Referral discussion only", indicative_cost_kes="Unknown",
+                 source_id=str(source["id"]), evidence_status="simulated")
+        self.add("agrovets", disease_id=str(corrected["id"]), name="Other area test shop",
+                 county="Kiambu", area="Ruiru", address="Fictional", phone_number="Not a contact",
+                 treatment_name="Referral discussion only", indicative_cost_kes="Unknown",
+                 source_id=str(source["id"]), evidence_status="simulated")
+        new_drug_shop = self.add("agrovets", disease_id=str(original["id"]), name="Drug listing test shop",
+                                 county="Kiambu", area="Juja", address="Fictional", phone_number="Not a contact",
+                                 treatment_name="Initial service", indicative_cost_kes="Unknown",
+                                 source_id=str(source["id"]), evidence_status="simulated")
+        self.add("agrovet_drugs", agrovet_id=str(new_drug_shop["id"]), disease_id=str(corrected["id"]),
+                 drug_name="Fictional product for corrected cause", availability_status="reported_available")
+        case_id = self.identify(save_for_expert_review="true")["recording"]["case_id"]
+        pending_directory = self.client.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets")
+        self.assertEqual(pending_directory.status_code, 409)
+        self.assertEqual(self.client.get(f"/api/v1/disease/cases/{case_id}/agrovet-locations").status_code, 409)
+        endpoint = f"/api/v1/admin/crop-health/disease_cases/{case_id}"
+        missing = self.client.put(endpoint, json={"values": {"expert_approval": "approved", "expert_review_note": "Reviewed."}})
+        self.assertEqual(missing.status_code, 422)
+        wrong_crop = self.add("diseases", crop="Maize", common_name="Maize test cause",
+                              scientific_name=None, summary="Fictional.", source_id=str(source["id"]), evidence_status="simulated")
+        invalid = self.client.put(endpoint, json={"values": {"reviewed_disease_id": wrong_crop["id"], "expert_review_note": "Correction."}})
+        self.assertEqual(invalid.status_code, 422)
+        approved = self.client.put(endpoint, json={"values": {"expert_approval": "approved",
+            "reviewed_disease_id": corrected["id"], "expert_review_note": "Original suggestion was unsupported; reviewed this alternative."}})
+        self.assertEqual(approved.status_code, 200, approved.text)
+        row = self.client.get("/api/v1/admin/crop-health/disease_cases").json()["records"][0]
+        self.assertEqual(row["identified_disease"], corrected["common_name"])
+        self.assertEqual(row["ai_disease_name"], original["common_name"])
+        case = self.client.get(f"/api/v1/disease/cases/{case_id}").json()
+        self.assertEqual(case["reviewed_disease_name"], corrected["common_name"])
+        self.assertEqual(case["possible_matches"], [original["common_name"]])
+        with database() as connection:
+            outbreak = connection.execute("SELECT disease_id FROM outbreaks WHERE id = (SELECT outbreak_id FROM disease_cases WHERE id = ?)", (case_id,)).fetchone()
+        if outbreak:
+            self.assertEqual(outbreak["disease_id"], corrected["id"])
+        nearby = self.client.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets",
+                                 params={"county": "Kiambu", "area": "Thika"})
+        self.assertEqual(nearby.status_code, 200, nearby.text)
+        self.assertEqual([shop["name"] for shop in nearby.json()["agrovets"]], ["Corrected cause test shop"])
+        locations = self.client.get(f"/api/v1/disease/cases/{case_id}/agrovet-locations")
+        self.assertEqual(locations.status_code, 200, locations.text)
+        self.assertEqual(locations.json(), [{"county": "Kiambu", "area": "Juja"}, {"county": "Kiambu", "area": "Ruiru"}, {"county": "Kiambu", "area": "Thika"}])
+        other_area = self.client.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets",
+                                     params={"county": "Kiambu", "area": "Ruiru"})
+        self.assertEqual(other_area.status_code, 200, other_area.text)
+        self.assertEqual([shop["name"] for shop in other_area.json()["agrovets"]], ["Other area test shop"])
+        drug_area = self.client.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets",
+                                    params={"county": "Kiambu", "area": "Juja"})
+        self.assertEqual(drug_area.status_code, 200, drug_area.text)
+        self.assertEqual([shop["treatment_name"] for shop in drug_area.json()["agrovets"]],
+                         ["Fictional product for corrected cause"])
+        no_match = self.client.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets",
+                                   params={"county": "Kiambu", "area": "No matching agrovet area"})
+        self.assertEqual(no_match.status_code, 200, no_match.text)
+        self.assertEqual(no_match.json()["agrovets"], [])
+        with TestClient(app) as other:
+            account = other.post("/api/v1/auth/register", json={"name": "Other farmer",
+                "email": "other-farmer@example.com", "password": "different-password-123",
+                "password_confirmation": "different-password-123"})
+            self.assertEqual(account.status_code, 201)
+            self.assertEqual(other.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets").status_code, 404)
+            self.assertEqual(other.get(f"/api/v1/disease/cases/{case_id}/agrovet-locations").status_code, 404)
+
+    def test_existing_agrovet_has_several_owner_managed_drug_disease_listings(self):
+        source, first_disease = self.enter_guide_records()
+        second_disease = self.add("diseases", crop="Tomato", common_name="Second tomato test cause",
+                                  scientific_name=None, summary="Fictional.", source_id=str(source["id"]),
+                                  evidence_status="simulated")
+        shop = self.client.get("/api/v1/admin/crop-health/agrovets").json()["records"][0]
+        duplicate_shop = self.client.post("/api/v1/admin/crop-health/agrovets", json={"values": {
+            "disease_id": second_disease["id"], "name": shop["name"], "county": shop["county"],
+            "area": shop["area"], "address": shop["address"], "phone_number": shop["phone_number"],
+            "treatment_name": "another", "indicative_cost_kes": "Unknown", "source_id": source["id"],
+            "evidence_status": "simulated"}})
+        self.assertEqual(duplicate_shop.status_code, 409)
+        with TestClient(app) as owner, TestClient(app) as stranger:
+            registered = owner.post("/api/v1/auth/register", json={"name": "Test shop owner",
+                "email": "shop-owner@example.com", "password": "shop-owner-test-123",
+                "password_confirmation": "shop-owner-test-123"})
+            self.assertEqual(registered.status_code, 201)
+            assigned = self.client.put(f"/api/v1/admin/crop-health/agrovets/{shop['id']}",
+                json={"values": {"owner_user_id": registered.json()["id"]}})
+            self.assertEqual(assigned.status_code, 200, assigned.text)
+            first = owner.post(f"/api/v1/agrovets/{shop['id']}/drugs", json={
+                "disease_id": first_disease["id"], "drug_name": "Fictional product A"})
+            second = owner.post(f"/api/v1/agrovets/{shop['id']}/drugs", json={
+                "disease_id": second_disease["id"], "drug_name": "Fictional product B"})
+            self.assertEqual(first.status_code, 201, first.text)
+            self.assertEqual(second.status_code, 201, second.text)
+            self.assertEqual(owner.post(f"/api/v1/agrovets/{shop['id']}/drugs", json={
+                "disease_id": first_disease["id"], "drug_name": "Fictional product A"}).status_code, 409)
+            self.assertEqual(owner.post(f"/api/v1/agrovets/{shop['id']}/drugs", json={
+                "disease_id": first_disease["id"], "drug_name": "fictional product a"}).status_code, 409)
+            mine = owner.get("/api/v1/agrovets/mine").json()
+            self.assertEqual(len(mine), 1)
+            self.assertEqual({drug["disease_id"] for drug in mine[0]["drugs"]}, {first_disease["id"], second_disease["id"]})
+            admin_list = self.client.get("/api/v1/admin/crop-health/agrovet_drugs")
+            self.assertEqual(admin_list.status_code, 200, admin_list.text)
+            self.assertEqual(admin_list.json()["total"], 2)
+            self.assertIn(shop["id"], [option["id"] for option in admin_list.json()["reference_options"]["agrovet_id"]])
+            self.assertEqual(stranger.post(f"/api/v1/agrovets/{shop['id']}/drugs", json={
+                "disease_id": first_disease["id"], "drug_name": "Unauthorised"}).status_code, 401)
+            stranger_registration = stranger.post("/api/v1/auth/register", json={"name": "Unassigned shop user",
+                "email": "unassigned-shop@example.com", "password": "unassigned-test-123",
+                "password_confirmation": "unassigned-test-123"})
+            self.assertEqual(stranger_registration.status_code, 201)
+            self.assertEqual(stranger.post(f"/api/v1/agrovets/{shop['id']}/drugs", json={
+                "disease_id": first_disease["id"], "drug_name": "Unauthorised"}).status_code, 404)
+            unavailable = owner.put(f"/api/v1/agrovets/{shop['id']}/drugs/{second.json()['id']}", json={
+                "disease_id": second_disease["id"], "drug_name": "Fictional product B",
+                "availability_status": "reported_unavailable"})
+            self.assertEqual(unavailable.status_code, 200, unavailable.text)
+            hidden = self.client.get("/api/v1/disease/nearby-agrovets", params={
+                "county": "Kiambu", "area": "Thika", "disease_id": second_disease["id"]}).json()
+            self.assertEqual(hidden["agrovets"], [])
+            restored = owner.put(f"/api/v1/agrovets/{shop['id']}/drugs/{second.json()['id']}", json={
+                "disease_id": second_disease["id"], "drug_name": "Fictional product B",
+                "availability_status": "reported_available"})
+            self.assertEqual(restored.status_code, 200, restored.text)
+            directory = self.client.get("/api/v1/disease/nearby-agrovets", params={
+                "county": "Kiambu", "area": "Thika", "disease_id": second_disease["id"]}).json()
+            self.assertEqual([item["treatment_name"] for item in directory["agrovets"]], ["Fictional product B"])
+            self.assertEqual(directory["agrovets"][0]["evidence_status"], "awaiting_validation")
+            case_id = self.identify(save_for_expert_review="true")["recording"]["case_id"]
+            approved = self.client.put(f"/api/v1/admin/crop-health/disease_cases/{case_id}", json={"values": {
+                "expert_approval": "approved", "reviewed_disease_id": second_disease["id"],
+                "expert_review_note": "Fictional review for directory filtering test."}})
+            self.assertEqual(approved.status_code, 200, approved.text)
+            matched_areas = self.client.get(f"/api/v1/disease/cases/{case_id}/agrovet-locations")
+            self.assertEqual(matched_areas.status_code, 200, matched_areas.text)
+            self.assertEqual(matched_areas.json(), [{"county": "Kiambu", "area": "Thika"}])
+            case_directory = self.client.get(f"/api/v1/disease/cases/{case_id}/nearby-agrovets",
+                                             params={"county": "Kiambu", "area": "Thika"})
+            self.assertEqual([item["treatment_name"] for item in case_directory.json()["agrovets"]], ["Fictional product B"])
 
 
 class ManualDiseaseSqliteTests(ManualDiseaseFlow, unittest.TestCase):

@@ -6,6 +6,7 @@ from uuid import uuid4
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AuthenticationError, RateLimitError
 
 from app.core.disclaimers import DISEASE_DISCLAIMER
+from app.core.plant_parts import valid_plant_part
 from app.data_access import disease_repository as repository
 from app.models.common import Confidence, SourceRecord
 from app.models.disease import (
@@ -96,6 +97,8 @@ def _identify_disease(request: DiseaseRequest, image: bytes | None, image_conten
         return _clarification_response(request, "location", "Which county and area is the crop in?", "Location is needed to select relevant local records and avoid misleading outbreak context.")
     if season.label == "Unknown":
         return _clarification_response(request, "season", "Which local season or observation period applies?", "Disease pressure and the relevance of dated records can change by season.")
+    if not valid_plant_part(request.affected_part):
+        return _clarification_response(request, "affected_part", "Which plant part is shown or affected?", "A selected plant part is needed to compare the photo with the same part in local symptom records.")
     if not request.symptoms and not image:
         return _clarification_response(request, "symptoms_or_image", "Please add a clear crop photo or describe the visible symptoms.", "At least one observation is needed to look for possible matches.")
 

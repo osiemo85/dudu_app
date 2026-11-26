@@ -72,16 +72,14 @@ def search_disease_candidates(crop: str | None, symptoms: str, affected_part: st
         parameters = (crop,)
     diseases = _rows(query, parameters)
     tokens = set(re.findall(r"[a-z]+", symptoms.lower()))
-    if affected_part:
-        tokens.update(re.findall(r"[a-z]+", affected_part.lower()))
     if not tokens:
         return []
     for disease in diseases:
-        signals = _rows("SELECT plant_part, symptom, weight FROM disease_symptoms WHERE disease_id = ?", (disease["id"],))
+        signals = _rows("SELECT plant_part, symptom, weight FROM disease_symptoms WHERE disease_id = ? AND plant_part = ?", (disease["id"], affected_part))
         matches = []
         score = 0.0
         for signal in signals:
-            signal_tokens = set(re.findall(r"[a-z]+", f'{signal["plant_part"]} {signal["symptom"]}'.lower()))
+            signal_tokens = set(re.findall(r"[a-z]+", signal["symptom"].lower()))
             overlap = tokens & signal_tokens
             if overlap:
                 partial = len(overlap) / max(1, len(signal_tokens)) * signal["weight"]
@@ -108,14 +106,12 @@ def get_disease_candidates(disease_ids: list[int], symptoms: str, affected_part:
         tuple(disease_ids),
     )
     tokens = set(re.findall(r"[a-z]+", symptoms.lower()))
-    if affected_part:
-        tokens.update(re.findall(r"[a-z]+", affected_part.lower()))
     by_id = {row["id"]: row for row in diseases}
     for disease in diseases:
         matches = []
         score = 0.0
-        for signal in _rows("SELECT plant_part, symptom, weight FROM disease_symptoms WHERE disease_id = ?", (disease["id"],)):
-            signal_tokens = set(re.findall(r"[a-z]+", f'{signal["plant_part"]} {signal["symptom"]}'.lower()))
+        for signal in _rows("SELECT plant_part, symptom, weight FROM disease_symptoms WHERE disease_id = ? AND plant_part = ?", (disease["id"], affected_part)):
+            signal_tokens = set(re.findall(r"[a-z]+", signal["symptom"].lower()))
             overlap = tokens & signal_tokens
             if overlap:
                 partial = len(overlap) / max(1, len(signal_tokens)) * signal["weight"]
@@ -172,7 +168,7 @@ def get_nearby_agrovets(county: str, area: str, disease_ids: list[int]) -> list[
     if not disease_ids:
         return []
     placeholders = ",".join("?" for _ in disease_ids)
-    return _rows(
+    legacy = _rows(
         f"""
         SELECT agrovets.*, diseases.common_name AS disease_name,
                sources.name AS source_name, sources.source_date,
@@ -187,6 +183,38 @@ def get_nearby_agrovets(county: str, area: str, disease_ids: list[int]) -> list[
         ORDER BY agrovets.name, agrovets.treatment_name
         """,
         (county, area, *disease_ids),
+    )
+    drugs = _rows(
+        f"""SELECT agrovet_drugs.disease_id, diseases.common_name AS disease_name,
+                   agrovets.name, agrovets.address, agrovets.phone_number,
+                   agrovet_drugs.drug_name AS treatment_name, 'Shop-reported; price unavailable' AS indicative_cost_kes,
+                   'awaiting_validation' AS evidence_status,
+                   'Agrovet drug listing' AS source_name, agrovet_drugs.reported_at AS source_date,
+                   agrovets.county || ' / ' || agrovets.area AS geographic_scope,
+                   'awaiting_validation' AS source_status,
+                   'Shop-reported drug and disease association. Product authorization, suitability and stock are not verified.' AS limitations
+            FROM agrovet_drugs JOIN agrovets ON agrovets.id = agrovet_drugs.agrovet_id
+            JOIN diseases ON diseases.id = agrovet_drugs.disease_id
+            WHERE lower(agrovets.county) = lower(?) AND lower(agrovets.area) = lower(?)
+              AND agrovet_drugs.disease_id IN ({placeholders})
+              AND agrovet_drugs.availability_status = 'reported_available'
+            ORDER BY agrovets.name, agrovet_drugs.drug_name""",
+        (county, area, *disease_ids),
+    )
+    return legacy + drugs
+
+
+def list_agrovet_locations(disease_id: int) -> list[dict[str, Any]]:
+    """Offer areas with a listing for the reviewed disease, including owner-reported drugs."""
+    return _rows(
+        """SELECT county, area FROM agrovets WHERE disease_id = ?
+           UNION
+           SELECT agrovets.county, agrovets.area FROM agrovets
+           JOIN agrovet_drugs ON agrovet_drugs.agrovet_id = agrovets.id
+           WHERE agrovet_drugs.disease_id = ?
+             AND agrovet_drugs.availability_status = 'reported_available'
+           ORDER BY county, area""",
+        (disease_id, disease_id),
     )
 
 
@@ -235,7 +263,7 @@ def save_disease_case(values: dict[str, Any], outbreak: dict[str, Any] | None) -
 def list_user_cases(user_id: int) -> list[dict[str, Any]]:
     with database() as connection:
         return [dict(row) for row in connection.execute(
-            """SELECT id, created_at, crop, county, area, season, status, expert_approval, expert_review_note, result_json
+            """SELECT id, created_at, crop, county, area, season, status, expert_approval, expert_review_note, reviewed_disease_id, result_json
                FROM disease_cases WHERE user_id = ? ORDER BY created_at DESC LIMIT 100""", (user_id,)
         ).fetchall()]
 
@@ -243,7 +271,7 @@ def list_user_cases(user_id: int) -> list[dict[str, Any]]:
 def get_user_case(case_id: int, user_id: int) -> dict[str, Any] | None:
     with database() as connection:
         row = connection.execute(
-            """SELECT id, created_at, crop, county, area, season, status, expert_approval, expert_review_note,
+            """SELECT id, created_at, crop, county, area, season, status, expert_approval, expert_review_note, reviewed_disease_id,
                       observation_json, result_json
                FROM disease_cases WHERE id = ? AND user_id = ?""", (case_id, user_id)
         ).fetchone()

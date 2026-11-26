@@ -195,7 +195,8 @@ CREATE TABLE IF NOT EXISTS disease_cases (
     outbreak_id INTEGER REFERENCES outbreaks(id) ON DELETE SET NULL,
     expert_approval TEXT NOT NULL DEFAULT 'pending'
         CHECK (expert_approval IN ('pending', 'approved', 'rejected')),
-    expert_review_note TEXT
+    expert_review_note TEXT,
+    reviewed_disease_id INTEGER REFERENCES diseases(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS counties (
@@ -289,6 +290,18 @@ CREATE TABLE IF NOT EXISTS user_sessions (
  expires_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS agrovet_drugs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agrovet_id INTEGER NOT NULL REFERENCES agrovets(id) ON DELETE CASCADE,
+    disease_id INTEGER NOT NULL REFERENCES diseases(id) ON DELETE CASCADE,
+    drug_name TEXT NOT NULL,
+    availability_status TEXT NOT NULL DEFAULT 'reported_available'
+        CHECK (availability_status IN ('reported_available', 'reported_unavailable')),
+    reported_at TEXT NOT NULL,
+    reported_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE(agrovet_id, disease_id, drug_name)
+);
+
 CREATE TABLE IF NOT EXISTS saved_plans (
  id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
  created_at TEXT NOT NULL, snapshot_json TEXT NOT NULL
@@ -348,6 +361,7 @@ SCHEMA_UPGRADES = {
         "rain_requirement_notes": "TEXT", "weeding_count": "INTEGER CHECK(weeding_count >= 0)", "fertility_notes": "TEXT"},
     "management_stages": {"start_day_after_planting": "INTEGER", "end_day_after_planting": "INTEGER",
         "timing_notes": "TEXT", "activity_type": "TEXT", "weeding_round": "INTEGER CHECK(weeding_round > 0)"},
-    "disease_cases": {"user_id": "INTEGER"},
+    "disease_cases": {"user_id": "INTEGER", "reviewed_disease_id": "INTEGER REFERENCES diseases(id) ON DELETE SET NULL"},
+    "agrovets": {"owner_user_id": "INTEGER REFERENCES users(id) ON DELETE SET NULL"},
     "users": {"name": "TEXT NOT NULL DEFAULT ''", "role": "TEXT NOT NULL DEFAULT 'user'"},
 }

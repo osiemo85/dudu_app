@@ -9,6 +9,7 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.messaging import router as messaging_router
 from app.api.v1.animal_health import router as animal_health_router
 from app.api.v1.disease import router as disease_router
+from app.api.v1.agrovets import router as agrovets_router
 from app.api.v1.health import router as health_router
 from app.api.v1.user_plans import router as user_plans_router
 from app.core.config import settings
@@ -42,13 +43,14 @@ app.add_middleware(
 @app.middleware("http")
 async def private_account_responses(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin", "/api/v1/disease/cases", "/api/v1/saved-plans", "/api/v1/chat", "/api/v1/animal-health", "/api/v1/messaging")):
+    if request.url.path.startswith(("/api/v1/auth/", "/api/v1/admin", "/api/v1/agrovets", "/api/v1/disease/cases", "/api/v1/saved-plans", "/api/v1/chat", "/api/v1/animal-health", "/api/v1/messaging")):
         response.headers["Cache-Control"] = "no-store"
     return response
 
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(disease_router, prefix="/api/v1")
+app.include_router(agrovets_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(user_plans_router, prefix="/api/v1")
 

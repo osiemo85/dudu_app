@@ -243,6 +243,7 @@ def _initialize_postgres() -> None:
         # Explicit fixture IDs must advance identity sequences before API inserts.
         from app.data_access.messaging_schema import initialize_messaging_schema
         initialize_messaging_schema(connection, postgres=True)
+        _initialize_schema(connection, postgres=True)
         connection.execute("""DO $$ DECLARE item record; BEGIN FOR item IN SELECT table_name FROM information_schema.columns
             WHERE table_schema='public' AND column_name='id' LOOP EXECUTE format('SELECT setval(pg_get_serial_sequence(%L, %L), COALESCE((SELECT MAX(id) FROM %I),1), true)', item.table_name, 'id', item.table_name); END LOOP; END $$""")
         connection.commit()
@@ -394,6 +395,7 @@ def initialize_database() -> None:
             connection.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
         from app.data_access.messaging_schema import initialize_messaging_schema
         initialize_messaging_schema(connection, postgres=False)
+        _initialize_schema(connection, postgres=False)
         connection.commit()
     finally:
         connection.close()

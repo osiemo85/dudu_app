@@ -30,7 +30,7 @@ PROD_ENV = {
     "SUPABASE_STORAGE_BUCKET": "disease-photos",
 }
 PHOTO = b"synthetic-photo-bytes"
-CONTEXT = {"crop": "Tomato", "county": "Kiambu", "area": "Thika", "season": "Long rains",
+CONTEXT = {"crop": "Tomato", "county": "Kiambu", "area": "Thika", "season": "Long rains", "affected_part": "leaf",
            "symptoms": "brown spots and concentric rings"}
 
 
