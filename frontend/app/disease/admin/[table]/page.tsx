@@ -1,7 +1,5 @@
 import { AdminWorkspace } from "@/components/AdminWorkspace";
-import { DashboardShell } from "@/components/DashboardShell";
 import { Suspense } from "react";
-import "@/app/admin.css";
 
 export default function CropHealthDatabasePage({ params }: PageProps<"/disease/admin/[table]">) {
   return (
@@ -13,5 +11,5 @@ export default function CropHealthDatabasePage({ params }: PageProps<"/disease/a
 
 async function DatabaseContent({ params }: { params: Promise<{ table: string }> }) {
   const { table } = await params;
-  return <DashboardShell><section className="admin-page"><AdminWorkspace table={table} /></section></DashboardShell>;
+  return <section className="admin-page"><AdminWorkspace table={table} /></section>;
 }

@@ -140,7 +140,7 @@ export function ProfilePage() {
               </button>
             </div>
             {account.role === "admin" && (
-              <Link className="account-admin-link" href="/disease/admin">
+              <Link className="account-admin-link" href="/disease/admin/disease_cases">
                 {t("Information databases")}
               </Link>
             )}

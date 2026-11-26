@@ -42,7 +42,7 @@ export function AccountNav() {
   return <div className="flex flex-wrap items-center justify-end gap-3 border-b border-emerald-100 bg-white px-5 py-3 text-sm sm:px-8">
     {loading ? <span className="text-slate-500">Checking account…</span> : account ? <>
       <span className="max-w-48 truncate text-slate-600">{account.name || account.email}{account.role === "admin" ? " · Admin" : ""}</span>
-      {account.role === "admin" && <Link href="/disease/admin" className="font-semibold text-emerald-700 underline">Information databases</Link>}
+      {account.role === "admin" && <Link href="/disease/admin/disease_cases" className="font-semibold text-emerald-700 underline">Information databases</Link>}
       <button type="button" onClick={logout} className="rounded-full border border-emerald-700 px-4 py-2 font-semibold text-emerald-800">Log out</button>
     </> : <>
       <Link href="/account/login" className="rounded-full border border-emerald-700 px-4 py-2 font-semibold text-emerald-800">Log in</Link>

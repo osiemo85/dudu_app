@@ -35,7 +35,7 @@ export function AdminSidebarLink() {
 
   if (!isAdmin) return null;
   return (
-    <NavigationLink href="/disease/admin" className="sidebar-admin-link"
+    <NavigationLink href="/disease/admin/disease_cases" className="sidebar-admin-link"
       label={t("Administration", "Usimamizi")} icon="clipboard"
       active={pathname.startsWith("/disease/admin")} />
   );
