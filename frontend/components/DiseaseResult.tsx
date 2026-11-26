@@ -51,7 +51,7 @@ export function DiseaseResult({ result }: { result: DiseaseResponse }) {
       {result.recording && <p className="mt-2 font-semibold">{result.recording.message}{result.recording.case_id ? ` Case #${result.recording.case_id}.` : ""}</p>}
       {result.agent_runs?.some((run) => run.status === "failed") && <p className="mt-2">The officer report could not be generated. The identification and available evidence are included in the review record if saving succeeded.</p>}
       {analysis.image_observations?.length > 0 && <div className="mt-2"><p className="font-semibold">AI observations from the photo</p><ul className="mt-1 list-inside list-disc">{analysis.image_observations.map((observation, index) => <li key={index}>{observation}</li>)}</ul></div>}
-      {analysis.search_observations?.length > 0 && <div className="mt-2"><p className="font-semibold">Symptoms selected for the local database search</p><ul className="mt-1 list-inside list-disc">{analysis.search_observations.map((observation, index) => <li key={index}>{observation}</li>)}</ul></div>}
+      {analysis.search_observations?.length > 0 && <div className="mt-2"><p className="font-semibold">Photo observations used to search local record</p><ul className="mt-1 list-inside list-disc">{analysis.search_observations.map((observation, index) => <li key={index}>{observation}</li>)}</ul></div>}
       <p className="mt-2">{analysis.image_analyzed ? "The uploaded photo was included in the AI analysis." : "No photo was analyzed."}</p>
       {analysis.status === "unavailable" && result.candidates.length > 0 && <p className="mt-2">These possible matches use only your written symptoms and local simulated records.</p>}
     </div>

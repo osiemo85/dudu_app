@@ -10,7 +10,7 @@ import { DiseaseResult } from "./DiseaseResult";
 
 const crops = ["Tomato", "Maize", "Bean", "Potato"];
 
-type RequiredField = "crop" | "observation" | "location" | "season";
+type RequiredField = "crop" | "observation" | "location" | "season" | "affected_part";
 type ValidationErrors = Partial<Record<RequiredField, string>>;
 
 async function responseError(response: Response): Promise<string> {
@@ -37,6 +37,7 @@ export function DiseaseForm() {
   const [isFormOpen, setIsFormOpen] = useState(true);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [seasons, setSeasons] = useState<SeasonOption[]>([]);
+  const [plantParts, setPlantParts] = useState<string[]>([]);
   const [county, setCounty] = useState("");
   const [area, setArea] = useState("");
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -55,6 +56,13 @@ export function DiseaseForm() {
       .then(setLocations)
       .catch(() => setError("Could not load demo locations. Check that FastAPI is running."));
   }, [isFormOpen]);
+
+  useEffect(() => {
+    fetch(`${PUBLIC_API_BASE_URL}/api/v1/disease/plant-parts`)
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then(setPlantParts)
+      .catch(() => setError("Could not load plant parts. Check that FastAPI is running."));
+  }, []);
 
   useEffect(() => {
     if (!isFormOpen || !county) return;
@@ -114,12 +122,16 @@ export function DiseaseForm() {
     const selectedCounty = String(form.get("county") ?? "").trim();
     const selectedSeason = String(form.get("season") ?? "").trim();
     const selectedCrop = String(form.get("crop") ?? "").trim();
+    const affectedPart = String(form.get("affected_part") ?? "").trim();
     const symptoms = String(form.get("symptoms") ?? "").trim();
     const image = form.get("image");
     const validation: ValidationErrors = {};
 
     if (!selectedCrop) {
       validation.crop = "Choose the crop so the database search uses the right crop records.";
+    }
+    if (!plantParts.includes(affectedPart)) {
+      validation.affected_part = "Choose the affected plant part so the search uses matching records.";
     }
     if (!symptoms && !(image instanceof File && image.size > 0)) {
       validation.observation = "Add a photo or describe the symptoms you can see.";
@@ -193,16 +205,17 @@ export function DiseaseForm() {
           </label>
         </div>
         {validationErrors.crop && <p id="crop-error" role="alert" className="mt-2 text-sm font-semibold text-red-700">{validationErrors.crop}</p>}
+        <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Affected part shown or described</T><span className="text-red-700"><T>(required)</T></span>
+          <select name="affected_part" required defaultValue="" aria-invalid={Boolean(validationErrors.affected_part)} aria-describedby={validationErrors.affected_part ? "affected-part-error" : undefined} onChange={() => clearValidationError("affected_part")} className={`field mt-2 ${validationErrors.affected_part ? "border-red-500 bg-red-50" : ""}`}>
+            <option value="">Choose plant part</option>{plantParts.map((part) => <option key={part} value={part}>{part}</option>)}
+          </select>
+        </label>
+        {validationErrors.affected_part && <p id="affected-part-error" role="alert" className="mt-2 text-sm font-semibold text-red-700">{validationErrors.affected_part}</p>}
         <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Symptoms</T><span className="font-normal text-slate-500"><T>(or add a photo below)</T></span>
           <textarea name="symptoms" rows={3} aria-invalid={Boolean(validationErrors.observation)} aria-describedby={validationErrors.observation ? "observation-error" : undefined} onChange={() => clearValidationError("observation")} className={`field mt-2 ${validationErrors.observation ? "border-red-500 bg-red-50" : ""}`} placeholder="Example: Brown spots with rings on lower leaves; some leaves are yellowing." />
         </label>
-        <details className="mt-5 rounded-xl border border-slate-200 px-4 py-1"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-emerald-900"><T>Add affected part and spread pattern (optional)</T></summary>
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          <label className="text-sm font-semibold text-slate-800"><T>Affected part</T><input name="affected_part" className="field mt-2" placeholder="Leaf, stem, fruit…" />
-          </label>
-          <label className="text-sm font-semibold text-slate-800"><T>Spread pattern</T><input name="spread_pattern" className="field mt-2" placeholder="One plant, one row, rapid…" />
-          </label>
-        </div>
+        <details className="mt-5 rounded-xl border border-slate-200 px-4 py-1"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-emerald-900"><T>Add spread pattern (optional)</T></summary>
+        <div className="mt-5"><label className="text-sm font-semibold text-slate-800"><T>Spread pattern</T><input name="spread_pattern" className="field mt-2" placeholder="One plant, one row, rapid…" /></label></div>
         </details>
         <label className="mt-5 block text-sm font-semibold text-slate-800"><T>Crop photo</T><span className="font-normal text-slate-500"><T>(or describe symptoms above)</T></span>
           <input name="image" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-invalid={Boolean(validationErrors.observation)} aria-describedby={validationErrors.observation ? "observation-error" : undefined} onChange={(event) => { setImageName(event.target.files?.[0]?.name ?? ""); clearValidationError("observation"); }} className={`mt-2 block w-full rounded-xl border border-dashed bg-emerald-50 p-4 text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-700 file:px-4 file:py-2 file:font-semibold file:text-white ${validationErrors.observation ? "border-red-500 bg-red-50" : "border-emerald-300"}`} />
