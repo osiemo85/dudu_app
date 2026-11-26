@@ -88,6 +88,12 @@ This document describes the intended demo layout. Some directories may not exist
 
 ## Implemented disease agent workflow
 
+- `/api/v1/disease/plant-parts` exposes the one controlled list used by the farmer
+  affected-part dropdown and the disease-symptom admin dropdown. The selected exact
+  value is required before matching and both AI and fallback lookup query only
+  symptom rows with that `plant_part`. Legacy free-text values must be corrected
+  explicitly by an administrator; they are not silently mapped.
+
 - `backend/app/services/disease_agent.py`: a photo-symptom agent, local evidence search
   agent, and final-judge agent. The photo agent returns a short description and visible
   symptoms; the search agent can query only exact farmer or photo observations; the judge
@@ -112,7 +118,17 @@ This document describes the intended demo layout. Some directories may not exist
 - `docs/DISEASE_UI_TEST_GUIDE.md`: administrator UI entries and expected results
   for seed-free disease testing.
 - Crop-health admin `disease_cases`: full evidence, photos, agent identities/runs and review
-  fields. Other modules remain independently reachable and usable.
+  fields. `reviewed_disease_id` is a separate expert correction linked to an existing
+  disease record; an additive migration preserves original `result_json`. Approved
+  farmer cases may query the simulated agrovet directory for the reviewed disease
+  and a user-selected county/area. Other modules remain independently reachable.
+- `backend/app/services/agrovet_inventory.py` and `/api/v1/agrovets`: owner-scoped drug
+  listings. `agrovet_drugs` links an existing shop and disease, with reported availability;
+  an assigned registered owner manages several listings in `/agrovets/mine`.
+- Crop-health admin `agrovets` assigns the owner account; `agrovet_drugs` lets admins add
+  or correct listings. An existing shop row links to a preselected new-drug form.
+  The case's agrovet-location endpoint offers areas with listings for its reviewed disease.
+  Both views retain clear unverified evidence labels.
 
 ## Planting agent workflow
 

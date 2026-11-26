@@ -201,7 +201,7 @@ its explicit API-key requirement and validation behavior.
 
 Demonstrate both flows:
 
-1. **Crop health**: Tomato; `brown spots with concentric rings on lower leaves`;
+1. **Crop health**: Tomato; affected part `leaf`; `brown spots with concentric rings on lower leaves`;
    Kiambu / Thika; Long rains. Submit for possible matches, local evidence and
    limitations. Do not opt into storage unless wanted.
 2. **Planting**: Machakos / Kangundo; Short rains; no preferred crop;
@@ -274,6 +274,26 @@ Swahili interface discloses this rather than silently translating source materia
 For existing PostgreSQL databases, run `uv run alembic upgrade head` from backend
 before saving animal cases. Schema-only startup creates the same empty tables
 on either backend. Restart FastAPI after updating.
+
+## Agrovet drug listings
+
+Run `uv run alembic upgrade head` from `backend` and restart FastAPI. In
+`/disease/admin/agrovets`, edit an existing agrovet and assign its registered
+**Owner account**. Owners then open **My agrovet drugs** from the account menu
+or `/agrovets/mine`, enter a drug name, and select a disease from the existing
+Diseases table. The same agrovet can have several drug and disease listings;
+owners can mark a listing unavailable or remove it. Admins can manage the same
+records at `/disease/admin/agrovet_drugs`. A second business record with the
+same name, county and area is rejected during creation.
+On the admin **Agrovets** table, use **Add drug** on the existing business row;
+its business name is preselected in the drug form. On an approved disease case,
+**Nearby Agrovets** shows county, area and a locked reviewed-disease filter.
+County and area choices include locations with listings for that disease.
+
+Listings and availability are self-reported and awaiting validation. They do
+not establish a shop's certification, product authorization, treatment
+suitability or verified stock. See `docs/DISEASE_UI_TEST_GUIDE.md` for a
+fictional end-to-end example.
 
 ## Expert messages and profile location
 

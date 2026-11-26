@@ -60,7 +60,7 @@ For a missing field, return an explicit unknown state or ask for clarification; 
 
 ### Inputs and acceptance criteria
 
-Inputs: required user-confirmed crop, photo and/or symptoms, growth stage (optional), location, season/context, and clarifications. For photo-only submissions, the model must report visible symptoms before local database lookup. Results must distinguish a match in the limited local demo data from symptoms that did not match those records.
+Inputs: required user-confirmed crop, exact affected plant part from the shared list, photo and/or symptoms, growth stage (optional), location, season/context, and clarifications. The farmer form and disease-symptom admin table load the same plant-part values. Both AI and fallback searches compare observations only with symptom rows for the selected exact part; legacy differently labelled rows require explicit admin correction. For photo-only submissions, the model must report visible symptoms before local database lookup. Results must distinguish a match in the limited local demo data from symptoms that did not match those records.
 
 Accept when:
 
@@ -156,6 +156,29 @@ No-match, clarification and provider-failure cases must remain distinguishable. 
 completed AI matches create linked pending outbreak observations; these cannot imply
 confirmed or current outbreaks. A reporting or save failure must not erase a completed
 identification. Reviewers can inspect full case evidence and record their decision/notes.
+The crop case review queue shows the AI's original possible disease beside status. A reviewer
+may select a different disease record for the same crop and must explain the correction;
+the original AI result remains unchanged. Approval requires a selected reviewed disease.
+Farmer case detail shows the reviewed disease separately from original possible matches.
+For approved cases only, the farmer can look up simulated agrovet listings for that reviewed
+disease using an explicitly selected current county and area (initially the case area).
+The case page visibly identifies the reviewed disease used as the locked third filter.
+County and area options include directory locations with listings for that disease,
+even when those locations are absent from the general disease-location table.
+The listing does not establish shop licensing, distance, stock or authorized treatment.
+For an approved case with a saved county and area, show its matching directory entries
+on load. Each visible entry shows the recorded phone, address, listed drug or service,
+indicative cost, source date, geographic coverage, evidence status and limitations.
+When a farmer changes the location filters, clear stale results until the new search.
+An existing agrovet has one business record and can have several separate drug listings.
+Each listing links to one disease in the local Diseases table and records the owner-reported
+availability and update time. An administrator assigns an existing registered account to
+the agrovet; only that account may add, update or remove its listings. A repeated business
+name in the same county and area should be managed through its existing record instead
+of creating another agrovet. The admin agrovet row links directly to a drug form
+with the business preselected. The directory may show owner-reported available
+listings for an eligible disease and selected area, clearly marked awaiting validation. This
+association is not evidence that a drug is authorized or appropriate for the disease.
 Farmer submissions without consent must not be retained locally. Trace export is disabled;
 coordinates are not sent to the models, and raw exchanges are not logged.
 

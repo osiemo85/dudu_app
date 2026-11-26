@@ -181,10 +181,29 @@ Open `/disease/admin/agrovets` and add:
 
 This entry tests the listing UI only. It is not a real supplier recommendation.
 
+### Add more drugs to the existing agrovet
+
+Register a test account, then edit **Fictional Thika test directory** at
+`/disease/admin/agrovets` and select that account under **Owner account**. Open
+`/agrovets/mine` while signed in as that owner. Add **Fictional product A** and select
+**Tomato leaf-spot test record** from the disease dropdown. Add another fictional
+disease in `/disease/admin/diseases`, then add **Fictional product B** for it under
+the same agrovet. The shop remains one business row with two separate listings.
+An admin can also use **Add drug** on that agrovet's row in
+`/disease/admin/agrovets`; the drug form opens with the business preselected.
+Owners can mark a listing unavailable or remove it. Admins can also add or edit
+records in `/disease/admin/agrovet_drugs`. These are self-reported records awaiting
+validation; they do not confirm registration, treatment suitability or stock.
+After an expert approves a disease on a saved case, the case's **Nearby Agrovets**
+section shows county, area and the locked reviewed disease used to filter listings.
+For an approved case, matching listings for the saved area load automatically. Each
+card shows the recorded phone, address, drug or service, indicative cost and source
+limitations; the fictional contact details must remain visibly unverified.
+
 ## Check the farmer flow
 
 Open `/disease` or refresh it after adding the records. A farmer does not need
-an account to request an advisory. Select **Tomato**, describe
+an account to request an advisory. Select **Tomato** and **leaf**, describe
 `brown spots with concentric rings`, and select **Kiambu**, **Thika**, and
 **Long rains**. Leave the photo empty and **Save for expert review** unchecked.
 
@@ -218,6 +237,10 @@ that the farmer granted browser-location consent.
    `UI test only; no expert diagnosis was made.` and save.
 4. Refresh the case and confirm the decision and comment persist. A different
    farmer must not be able to read this farmer's private case.
+   For an approval, select a reviewed disease from the same crop and enter a review
+   comment. The admin list shows it beside Status; the original AI match remains
+   in the evidence. The farmer case shows the reviewed disease and a Nearby Agrovets
+   link. Select the current county and area before searching the simulated directory.
 5. Restart the backend and inspect the manual source, location, disease, and
    case. They must persist without new fixture rows or changed descriptions.
 
